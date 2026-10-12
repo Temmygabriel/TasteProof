@@ -41,6 +41,7 @@ export default function HomePage() {
   const [result, setResult] = useState<TasteTestRun | null>(null);
   const [previousRun, setPreviousRun] = useState<TasteTestRun | null>(null);
   const [error, setError] = useState("");
+  const [errorState, setErrorState] = useState("");
   const [busy, setBusy] = useState(false);
   const [qlooConfigured, setQlooConfigured] = useState<boolean | null>(null);
 
@@ -79,6 +80,7 @@ export default function HomePage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setErrorState("");
     setBusy(true);
     try {
       const response = await fetch("/api/evaluate", {
@@ -88,6 +90,7 @@ export default function HomePage() {
       });
       const payload = await response.json();
       if (!response.ok) {
+        setErrorState(typeof payload.state === "string" ? payload.state : "");
         const missing = Array.isArray(payload.unresolvedAnchors)
           ? " Could not resolve: " + payload.unresolvedAnchors.map((item: { name: string }) => item.name).join(", ") + "."
           : "";
@@ -173,7 +176,7 @@ export default function HomePage() {
               <p className="microcopy">Paste candidate names returned by your agent. TasteProof does not invent a candidate list or a Qloo result.</p>
             </section>
 
-            {error ? <div className="error-box" role="alert"><strong>Test not completed</strong><p>{error}</p></div> : null}
+            {error ? <div className="error-box" role="alert"><strong>Test not completed{errorState ? " · " + errorState.replaceAll("_", " ") : ""}</strong><p>{error}</p></div> : null}
             <div className="submit-row"><p><span className="live-dot" /> LIVE API REQUEST · NO SYNTHETIC EVIDENCE</p>
               <button type="submit" disabled={busy}>{busy ? "Running Qloo test…" : result ? "Rerun taste test" : "Run taste test"} <span>↗</span></button>
             </div>
