@@ -13,7 +13,7 @@
   "paths": {
     "/api/evaluate": {
       "post": {
-        "operationId": "evaluateRecommendationTasteFit",
+        "operationId": "evaluateRecommendationTasteFitAlias",
         "summary": "Evaluate recommendations against a supplied taste context",
         "description": "Submit recommendations produced by an external agent. TasteProof resolves the anchors and places through Qloo, requests a live Insights ranking, and returns a deterministic verdict and evidence. It does not generate the recommendations.",
         "requestBody": {
