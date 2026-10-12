@@ -106,3 +106,28 @@ describe("request validation", () => {
     expect(() => parseTasteTestInput({ ...valid, candidates: ["Same", "same"] })).toThrow(InputValidationError);
   });
 });
+
+import { describe, expect, it } from "vitest";
+import { TestStateMachine } from "../src/lib/test-state";
+
+describe("TasteProof execution state machine", () => {
+  it("records only actual, legal stages through a partial result", () => {
+    const machine = new TestStateMachine();
+    machine.transition("CONFIGURED");
+    machine.transition("RESOLVING_TASTE");
+    machine.transition("TASTE_READY");
+    machine.transition("RESOLVING_CANDIDATES");
+    machine.transition("EVALUATING");
+    const trace = machine.transition("PARTIAL_RESULT");
+    expect(trace.stateHistory).toEqual([
+      "IDLE", "CONFIGURED", "RESOLVING_TASTE", "TASTE_READY",
+      "RESOLVING_CANDIDATES", "EVALUATING", "PARTIAL_RESULT"
+    ]);
+    expect(trace.state).toBe("PARTIAL_RESULT");
+  });
+
+  it("rejects an impossible transition instead of faking progress", () => {
+    const machine = new TestStateMachine();
+    expect(() => machine.transition("EVALUATED")).toThrow(/Invalid TasteProof state transition/);
+  });
+});

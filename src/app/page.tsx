@@ -212,6 +212,12 @@ export default function HomePage() {
           {!result ? <div className="empty-receipt"><span>＋</span><div><strong>Your receipt will appear here.</strong><p>Run a test to inspect resolved entities, the Qloo ordering, the rule, and evidence. Nothing is pre-scored.</p></div></div> : (
             <div className="receipt">
               <div className="receipt-title"><div><small>TEST RECEIPT / QLOO LIVE</small><h3>{result.rankedCandidateCount} submitted candidates matched the Qloo baseline</h3></div><span>RUN {result.testId.slice(0, 8).toUpperCase()}</span></div>
+              <div className="execution-trace">
+                <div className="execution-state"><small>TERMINAL STATE</small><strong>{result.state.replaceAll("_", " ")}</strong></div>
+                <ol aria-label="Actual execution state trace">
+                  {result.stateHistory.map((state, index) => <li key={state + "-" + index} data-terminal={index === result.stateHistory.length - 1 ? "true" : "false"}>{state.replaceAll("_", " ")}</li>)}
+                </ol>
+              </div>
               <div className="receipt-meta"><div><small>TASK</small><strong>{result.task}</strong></div><div><small>LOCATION</small><strong>{result.location}</strong></div><div><small>CREATED</small><strong>{new Date(result.createdAt).toLocaleString()}</strong></div></div>
               <div className="resolved-anchors"><small>RESOLVED TASTE ANCHORS</small><div>{result.anchors.map((anchor) => <span key={anchor.entityId}><small>{anchor.type.replace("_", " ").toUpperCase()}</small><strong>{anchor.resolvedName}</strong><code className="entity-id">{anchor.entityId}</code></span>)}</div></div>
               <div className="result-columns"><span>AGENT CANDIDATE</span><span>QLOO RANK</span><span>VERDICT</span></div>

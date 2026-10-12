@@ -36,6 +36,8 @@ export interface CandidateResult {
 }
 
 export interface TasteTestRun {
+  state: import("./test-state").TestState;
+  stateHistory: import("./test-state").TestState[];
   testId: string;
   createdAt: string;
   mode: "qloo-live";

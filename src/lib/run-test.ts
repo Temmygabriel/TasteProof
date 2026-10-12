@@ -2,13 +2,16 @@ import { randomUUID } from "node:crypto";
 import { evaluateCandidates } from "./evaluate";
 import { chooseEntity, searchEntities, getAffinityBaseline, type QlooEntity } from "./qloo";
 import type { TasteTestInput, TasteTestRun, AnchorType } from "./types";
+import { TestStateMachine, type StateSnapshot } from "./test-state";
 
 export class AnchorResolutionError extends Error {
   readonly unresolvedAnchors: Array<{ name: string; type: AnchorType; candidatesFound: number }>;
-  constructor(items: Array<{ name: string; type: AnchorType; candidatesFound: number }>) {
+  readonly trace: StateSnapshot;
+  constructor(items: Array<{ name: string; type: AnchorType; candidatesFound: number }>, trace: StateSnapshot) {
     super("One or more taste anchors could not be resolved uniquely by Qloo.");
     this.name = "AnchorResolutionError";
     this.unresolvedAnchors = items;
+    this.trace = trace;
   }
 }
 
@@ -26,6 +29,9 @@ function resolveOne(name: string, entities: QlooEntity[]) {
 }
 
 export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun> {
+  const machine = new TestStateMachine();
+  machine.transition("CONFIGURED");
+  machine.transition("RESOLVING_TASTE");
   const anchorMatches = await Promise.all(input.anchors.map(async (anchor) => ({
     anchor,
     ...resolveOne(anchor.name, await searchEntities(anchor.name, anchor.type))
@@ -36,8 +42,12 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
     type: match.anchor.type,
     candidatesFound: match.resolution === "ambiguous" ? 2 : 0
   }));
-  if (unresolvedAnchors.length) throw new AnchorResolutionError(unresolvedAnchors);
+  if (unresolvedAnchors.length) {
+    machine.transition("ENTITY_NOT_FOUND");
+    throw new AnchorResolutionError(unresolvedAnchors, machine.snapshot());
+  }
 
+  machine.transition("TASTE_READY");
   const anchors = anchorMatches.flatMap((match) => match.entity ? [{
     inputName: match.anchor.name,
     resolvedName: match.entity.name,
@@ -46,17 +56,33 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
   }] : []);
 
   const uniqueAnchorIds = new Set(anchors.map((anchor) => anchor.entityId.toUpperCase()));
-  if (uniqueAnchorIds.size !== anchors.length) throw new DuplicateResolvedAnchorError();
+  if (uniqueAnchorIds.size !== anchors.length) {
+    machine.transition("INPUT_INVALID");
+    throw new DuplicateResolvedAnchorError();
+  }
 
+  machine.transition("RESOLVING_CANDIDATES");
   const candidateMatches = await Promise.all(input.candidates.map(async (name) => ({
     inputName: name,
     ...resolveOne(name, await searchEntities(name, "place"))
   })));
 
+  machine.transition("EVALUATING");
   const baseline = await getAffinityBaseline(anchors.map((anchor) => anchor.entityId), input.location, 20);
   const evaluation = evaluateCandidates(candidateMatches, baseline);
+  const hasRankedCandidate = evaluation.candidates.some((candidate) =>
+    candidate.verdict === "PASS" || candidate.verdict === "REVIEW" || candidate.verdict === "FAIL"
+  );
+  const hasUnresolvedCandidate = evaluation.candidates.some((candidate) => candidate.verdict === "UNRESOLVED");
+  const finalState = !hasRankedCandidate
+    ? "UNRESOLVED"
+    : hasUnresolvedCandidate
+      ? "PARTIAL_RESULT"
+      : "EVALUATED";
+  machine.transition(finalState);
 
   return {
+    ...machine.snapshot(),
     testId: randomUUID(),
     createdAt: new Date().toISOString(),
     mode: "qloo-live",
