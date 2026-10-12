@@ -44,3 +44,42 @@ describe("Qloo response parsing", () => {
     expect(chooseEntity("Only one", [entities[0]])?.entityId).toBe("1");
   });
 });
+
+
+import { InputValidationError, parseTasteTestInput } from "../src/lib/validation";
+
+describe("request validation", () => {
+  it("accepts a valid taste test request", () => {
+    expect(parseTasteTestInput({
+      anchors: [
+        { name: "Tyler, the Creator", type: "artist" },
+        { name: "Aesop", type: "brand" }
+      ],
+      candidates: ["Candidate A", "Candidate B"],
+      task: "Recommend a hotel",
+      location: "Copenhagen"
+    }).candidates).toEqual(["Candidate A", "Candidate B"]);
+  });
+
+  it("rejects duplicate anchors and too few candidates", () => {
+    expect(() => parseTasteTestInput({
+      anchors: [
+        { name: "Aesop", type: "brand" },
+        { name: "Aesop", type: "brand" }
+      ],
+      candidates: ["Candidate A", "Candidate B"],
+      task: "Recommend a hotel",
+      location: "Copenhagen"
+    })).toThrow(InputValidationError);
+
+    expect(() => parseTasteTestInput({
+      anchors: [
+        { name: "Tyler, the Creator", type: "artist" },
+        { name: "Aesop", type: "brand" }
+      ],
+      candidates: ["Only one"],
+      task: "Recommend a hotel",
+      location: "Copenhagen"
+    })).toThrow(InputValidationError);
+  });
+});

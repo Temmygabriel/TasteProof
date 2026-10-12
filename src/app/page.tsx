@@ -13,7 +13,7 @@ const anchorTypeOptions: Array<{ value: AnchorType; label: string }> = [
   { value: "artist", label: "Artist" }, { value: "brand", label: "Brand" },
   { value: "movie", label: "Film" }, { value: "tv_show", label: "TV series" },
   { value: "book", label: "Book" }, { value: "place", label: "Place" },
-  { value: "podcast", label: "Podcast" }, { value: "videogame", label: "Video game" }
+  { value: "podcast", label: "Podcast" }, { value: "video_game", label: "Video game" }
 ];
 const verdictLabel: Record<Verdict, string> = {
   PASS: "Pass", REVIEW: "Review", FAIL: "Fail", UNRESOLVED: "Unresolved"
@@ -193,10 +193,10 @@ export default function HomePage() {
             <div className="receipt">
               <div className="receipt-title"><div><small>TEST RECEIPT / QLOO LIVE</small><h3>{result.rankedCandidateCount} candidates with usable evidence</h3></div><span>RUN {result.testId.slice(0, 8).toUpperCase()}</span></div>
               <div className="receipt-meta"><div><small>TASK</small><strong>{result.task}</strong></div><div><small>LOCATION</small><strong>{result.location}</strong></div><div><small>CREATED</small><strong>{new Date(result.createdAt).toLocaleString()}</strong></div></div>
-              <div className="resolved-anchors"><small>RESOLVED TASTE ANCHORS</small><div>{result.anchors.map((anchor) => <span key={anchor.entityId}><small>{anchor.type.replace("_", " ").toUpperCase()}</small><strong>{anchor.resolvedName}</strong></span>)}</div></div>
+              <div className="resolved-anchors"><small>RESOLVED TASTE ANCHORS</small><div>{result.anchors.map((anchor) => <span key={anchor.entityId}><small>{anchor.type.replace("_", " ").toUpperCase()}</small><strong>{anchor.resolvedName}</strong><code className="entity-id">{anchor.entityId}</code></span>)}</div></div>
               <div className="result-columns"><span>AGENT CANDIDATE</span><span>QLOO RANK</span><span>VERDICT</span></div>
               {result.candidates.map((candidate, index) => <article className="result-row" key={candidate.inputName + "-" + index}>
-                <div className="result-name"><small>0{index + 1}</small><div><strong>{candidate.resolvedName || candidate.inputName}</strong><p>{candidate.resolvedName ? "Resolved by Qloo" : candidate.resolution === "ambiguous" ? "Multiple possible matches" : "Not resolved"}</p></div></div>
+                <div className="result-name"><small>0{index + 1}</small><div><strong>{candidate.resolvedName || candidate.inputName}</strong><p>{candidate.resolvedName ? "Resolved by Qloo · " + candidate.entityId : candidate.resolution === "ambiguous" ? "Multiple possible matches" : "Not resolved"}</p></div></div>
                 <div className="rank">{candidate.qlooRank ? <><strong>#{candidate.qlooRank}</strong><span>of {result.rankedCandidateCount}</span></> : <span>No rank</span>}</div>
                 <div><span className={"verdict verdict-" + candidate.verdict.toLowerCase()}>{verdictLabel[candidate.verdict]}</span></div>
                 <p className="evidence-copy">{candidate.evidence}</p>

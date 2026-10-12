@@ -29,7 +29,7 @@
                       "required": ["name", "type"],
                       "properties": {
                         "name": {"type": "string", "minLength": 1, "maxLength": 120},
-                        "type": {"type": "string", "enum": ["artist", "brand", "movie", "tv_show", "book", "place", "podcast", "videogame"]}
+                        "type": {"type": "string", "enum": ["artist", "brand", "movie", "tv_show", "book", "place", "podcast", "video_game"]}
                       }
                     }
                   },

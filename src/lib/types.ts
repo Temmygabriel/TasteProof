@@ -1,5 +1,5 @@
 export const ANCHOR_TYPES = [
-  "artist", "brand", "movie", "tv_show", "book", "place", "podcast", "videogame"
+  "artist", "brand", "movie", "tv_show", "book", "place", "podcast", "video_game"
 ] as const;
 
 export type AnchorType = (typeof ANCHOR_TYPES)[number];
