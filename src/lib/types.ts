@@ -35,7 +35,15 @@ export interface CandidateResult {
   evidence: string;
 }
 
+export interface BaselineResult {
+  entityId: string;
+  name: string;
+  subtype: string | null;
+  rank: number;
+}
+
 export interface TasteTestRun {
+  baseline: BaselineResult[];
   state: import("./test-state").TestState;
   stateHistory: import("./test-state").TestState[];
   testId: string;

@@ -227,6 +227,16 @@ export default function HomePage() {
                 <div><span className={"verdict verdict-" + candidate.verdict.toLowerCase()}>{verdictLabel[candidate.verdict]}</span></div>
                 <p className="evidence-copy">{candidate.evidence}</p>
               </article>)}
+              <details className="baseline-disclosure">
+                <summary>Inspect Qloo's returned affinity baseline <span>{result.baseline.length} entities</span></summary>
+                <p className="baseline-explainer">The list below is the actual ordered Qloo Insights result used for the verdicts. Rank is its returned position, not a fabricated numeric score.</p>
+                <div className="baseline-list">
+                  <div className="baseline-row baseline-head"><span>RANK</span><span>QLOO ENTITY</span><span>ENTITY ID</span></div>
+                  {result.baseline.map((entity) => <div className="baseline-row" key={entity.entityId}>
+                    <strong>#{entity.rank}</strong><span>{entity.name}<small>{entity.subtype || "Qloo place entity"}</small></span><code>{entity.entityId}</code>
+                  </div>)}
+                </div>
+              </details>
               <div className="rule-receipt"><div><small>DETERMINISTIC RULE</small><p>{result.evaluationRule}</p></div><div><small>PROVIDER</small><p>{result.providerNote}</p></div></div>
               <div className="receipt-foot"><span>RUN DATE {new Date(result.createdAt).toISOString().slice(0, 10)}</span><span>TRACE ID {result.testId}</span></div>
             </div>

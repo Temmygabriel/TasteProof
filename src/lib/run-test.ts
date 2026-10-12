@@ -90,6 +90,7 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
     location: input.location,
     anchors,
     candidates: evaluation.candidates,
+    baseline,
     rankedCandidateCount: evaluation.rankedCandidateCount,
     baselineResultCount: evaluation.baselineResultCount,
     evaluationRule:
