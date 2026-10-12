@@ -108,7 +108,7 @@ export function chooseEntity(query: string, entities: QlooEntity[]): QlooEntity 
   const exact = entities.filter((entity) => normalizeEntityName(entity.name) === normalized);
   if (exact.length === 1) return exact[0];
   if (exact.length > 1) return null;
-  return entities.length === 1 ? entities[0] : null;
+  return null;
 }
 
 export async function searchEntities(query: string, type: AnchorType | "place"): Promise<QlooEntity[]> {
@@ -128,6 +128,7 @@ export async function getCandidateRanking(anchorIds: string[], candidateIds: str
   url.searchParams.set("signal.interests.entities", anchorIds.join(","));
   url.searchParams.set("filter.results.entities", candidateIds.join(","));
   url.searchParams.set("filter.location.query", location);
+  url.searchParams.set("sort_by", "affinity");
   url.searchParams.set("take", String(Math.max(10, candidateIds.length)));
   return parseQlooEntities(await getJson(url));
 }

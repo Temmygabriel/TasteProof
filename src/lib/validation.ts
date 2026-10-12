@@ -44,6 +44,9 @@ export function parseTasteTestInput(value: unknown): TasteTestInput {
   if (!Array.isArray(value.candidates)) {
     throw new InputValidationError("Provide recommendations from the agent you want to test.");
   }
+  if (!value.candidates.every((item) => typeof item === "string")) {
+    throw new InputValidationError("Every recommendation candidate must be text.");
+  }
   const candidates = value.candidates
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())

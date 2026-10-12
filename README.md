@@ -19,7 +19,7 @@ No result is preloaded or labelled as live evidence. If Qloo is not configured o
 
 ## Agent-tool interface
 
-TasteProof exposes POST /api/evaluate, described by public/openapi.json. An agent can call this endpoint after generating recommendations to receive candidate resolutions, ranks, verdicts and evidence. The endpoint does not require an LLM provider key; Qloo is the only external API credential required for the core flow.
+TasteProof exposes POST /api/test (also available as POST /api/evaluate), described by public/openapi.json. An agent can call this endpoint after generating recommendations to receive candidate resolutions, ranks, verdicts and evidence. The endpoint does not require an LLM provider key; Qloo is the only external API credential required for the core flow.
 
 ## Setup
 
@@ -52,8 +52,12 @@ For live verification, add the repository Action secret QLOO_API_KEY and then us
 ## Endpoints
 
 - GET /api/health reports whether a key is configured; it does not validate that key.
-- POST /api/evaluate runs a live Qloo-backed evaluation.
-- /openapi.json documents the agent-callable endpoint.
+- POST /api/test runs a live Qloo-backed evaluation; POST /api/evaluate is a compatibility alias.
+- POST /api/qloo/search resolves a submitted name into Qloo entity IDs.
+- POST /api/qloo/insights ranks resolved candidates under the supplied taste and location context.
+- /openapi.json documents the agent-callable evaluation tool.
+
+The Qloo lookup routes use a best-effort per-process rate limit. This helps against casual bursts but is not a distributed quota service.
 
 ## Technical honesty and limitations
 

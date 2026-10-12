@@ -41,7 +41,8 @@ describe("Qloo response parsing", () => {
     ];
     expect(chooseEntity("Dune", entities)?.entityId).toBe("1");
     expect(chooseEntity("Unknown title", entities)).toBeNull();
-    expect(chooseEntity("Only one", [entities[0]])?.entityId).toBe("1");
+    expect(chooseEntity("Dune", [entities[0]])?.entityId).toBe("1");
+    expect(chooseEntity("Only one", [entities[0]])).toBeNull();
   });
 });
 
@@ -59,6 +60,11 @@ describe("request validation", () => {
       task: "Recommend a hotel",
       location: "Copenhagen"
     }).candidates).toEqual(["Candidate A", "Candidate B"]);
+  });
+
+  it("rejects non-text candidate entries", () => {
+    expect(() => parseTasteTestInput({ ...valid, candidates: ["Candidate A", 123] }))
+      .toThrow(InputValidationError);
   });
 
   it("rejects duplicate anchors and too few candidates", () => {

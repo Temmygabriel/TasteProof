@@ -2,11 +2,20 @@ import { NextResponse } from "next/server";
 import { AnchorResolutionError, runTasteTest } from "../../../lib/run-test";
 import { QlooApiError, QlooConfigurationError } from "../../../lib/qloo";
 import { InputValidationError, parseTasteTestInput } from "../../../lib/validation";
+import { rateLimit } from "../../../lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const limit = rateLimit(request, "taste-test", 4, 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "Too many test runs. Wait before trying again.", code: "RATE_LIMITED" }, {
+      status: 429,
+      headers: { "Retry-After": String(limit.retryAfterSeconds), "Cache-Control": "no-store" }
+    });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -27,7 +36,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message, code: "QLOO_NOT_CONFIGURED" }, { status: 503 });
     }
     if (error instanceof QlooApiError) {
-      const status = error.status === 429 ? 429 : [401, 403].includes(error.status) ? 503 : 502;
+      const status = error.status === 429 ? 429 : error.status === 504 ? 504 : [401, 403].includes(error.status) ? 503 : 502;
       return NextResponse.json({ error: error.message, code: "QLOO_REQUEST_FAILED" }, { status });
     }
     return NextResponse.json({

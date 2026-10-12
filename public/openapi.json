@@ -5,7 +5,11 @@
     "version": "0.1.0",
     "description": "Resolve submitted taste anchors and candidate places through Qloo, then return a relative ranking verdict with evidence."
   },
-  "servers": [{ "url": "/" }],
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
   "paths": {
     "/api/evaluate": {
       "post": {
@@ -18,7 +22,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["anchors", "candidates", "task", "location"],
+                "required": [
+                  "anchors",
+                  "candidates",
+                  "task",
+                  "location"
+                ],
                 "properties": {
                   "anchors": {
                     "type": "array",
@@ -26,28 +35,297 @@
                     "maxItems": 5,
                     "items": {
                       "type": "object",
-                      "required": ["name", "type"],
+                      "required": [
+                        "name",
+                        "type"
+                      ],
                       "properties": {
-                        "name": {"type": "string", "minLength": 1, "maxLength": 120},
-                        "type": {"type": "string", "enum": ["artist", "brand", "movie", "tv_show", "book", "place", "podcast", "video_game"]}
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "artist",
+                            "brand",
+                            "movie",
+                            "tv_show",
+                            "book",
+                            "place",
+                            "podcast",
+                            "video_game"
+                          ]
+                        }
                       }
                     }
                   },
-                  "candidates": {"type": "array", "minItems": 2, "maxItems": 10, "items": {"type": "string", "minLength": 1, "maxLength": 160}},
-                  "task": {"type": "string", "minLength": 1, "maxLength": 180},
-                  "location": {"type": "string", "minLength": 1, "maxLength": 100}
+                  "candidates": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    }
+                  },
+                  "task": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 180
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": {"description": "Live Qloo result with resolved entities, relative ranks, verdicts and evidence."},
-          "400": {"description": "Invalid input."},
-          "422": {"description": "One or more taste anchors could not be resolved uniquely."},
-          "429": {"description": "Qloo rate limit."},
-          "502": {"description": "Upstream Qloo error."},
-          "503": {"description": "Qloo key missing or denied."}
+          "200": {
+            "description": "Live Qloo result with resolved entities, relative ranks, verdicts and evidence."
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "422": {
+            "description": "One or more taste anchors could not be resolved uniquely."
+          },
+          "429": {
+            "description": "Qloo rate limit."
+          },
+          "502": {
+            "description": "Upstream Qloo error."
+          },
+          "503": {
+            "description": "Qloo key missing or denied."
+          }
+        }
+      }
+    },
+    "/api/test": {
+      "post": {
+        "operationId": "evaluateRecommendationTasteFit",
+        "summary": "Run TasteProof as an agent-callable evaluation tool",
+        "description": "Canonical tool endpoint. Submit recommendations from the calling agent; TasteProof resolves entities with Qloo, requests Qloo Insights affinity ordering, and returns deterministic verdicts and evidence.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "anchors",
+                  "candidates",
+                  "task",
+                  "location"
+                ],
+                "properties": {
+                  "anchors": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 5,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "artist",
+                            "brand",
+                            "movie",
+                            "tv_show",
+                            "book",
+                            "place",
+                            "podcast",
+                            "video_game"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    }
+                  },
+                  "task": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 180
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Live Qloo result with resolved entities, relative ranks, verdicts and evidence."
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "422": {
+            "description": "One or more taste anchors could not be resolved uniquely."
+          },
+          "429": {
+            "description": "Qloo rate limit."
+          },
+          "502": {
+            "description": "Upstream Qloo error."
+          },
+          "503": {
+            "description": "Qloo key missing or denied."
+          }
+        }
+      }
+    },
+    "/api/qloo/search": {
+      "post": {
+        "operationId": "resolveQlooEntities",
+        "summary": "Resolve names into Qloo entities",
+        "description": "Search the Qloo entity catalogue. The API key remains server-side. Ambiguous user input must not be silently accepted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query",
+                  "type"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "artist",
+                      "brand",
+                      "movie",
+                      "tv_show",
+                      "book",
+                      "place",
+                      "podcast",
+                      "video_game"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Normalized Qloo entities including ID, name and subtype."
+          },
+          "400": {
+            "description": "Invalid query or entity type."
+          },
+          "429": {
+            "description": "Local request throttle or Qloo rate limit."
+          },
+          "502": {
+            "description": "Upstream Qloo request failed."
+          },
+          "503": {
+            "description": "Qloo API is not configured or key is not authorized."
+          }
+        }
+      }
+    },
+    "/api/qloo/insights": {
+      "post": {
+        "operationId": "rankResolvedQlooCandidates",
+        "summary": "Get a Qloo Insights ranking for resolved candidates",
+        "description": "Submit entity IDs returned by Qloo search. TasteProof calls Qloo Insights with interest entities, candidate filters and a locality context.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "anchorEntityIds",
+                  "candidateEntityIds",
+                  "location"
+                ],
+                "properties": {
+                  "anchorEntityIds": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 5,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "candidateEntityIds": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Qloo entities returned in affinity order, normalized with rank and identity."
+          },
+          "400": {
+            "description": "Invalid entity IDs or location."
+          },
+          "429": {
+            "description": "Local request throttle or Qloo rate limit."
+          },
+          "502": {
+            "description": "Upstream Qloo request failed."
+          },
+          "503": {
+            "description": "Qloo API is not configured or key is not authorized."
+          }
         }
       }
     }
