@@ -1,98 +1,108 @@
 import { describe, expect, it } from "vitest";
 import { evaluateCandidates, verdictForRank } from "../src/lib/evaluate";
 import { chooseEntity, parseQlooEntities } from "../src/lib/qloo";
+import { InputValidationError, parseTasteTestInput } from "../src/lib/validation";
 
-describe("relative verdict rule", () => {
-  it("splits three candidates into pass, review and fail", () => {
-    expect(verdictForRank(1, 3)).toBe("PASS");
-    expect(verdictForRank(2, 3)).toBe("REVIEW");
-    expect(verdictForRank(3, 3)).toBe("FAIL");
+describe("verdicts based on Qloo's broader affinity baseline", () => {
+  it("applies documented top/middle/bottom-third rules to actual provider rank", () => {
+    expect(verdictForRank(1, 20)).toBe("PASS");
+    expect(verdictForRank(7, 20)).toBe("PASS");
+    expect(verdictForRank(8, 20)).toBe("REVIEW");
+    expect(verdictForRank(14, 20)).toBe("REVIEW");
+    expect(verdictForRank(15, 20)).toBe("FAIL");
+    expect(verdictForRank(20, 20)).toBe("FAIL");
   });
-  it("withholds a verdict when ranking evidence is insufficient", () => {
-    expect(verdictForRank(1, 1)).toBe("UNRESOLVED");
-    expect(verdictForRank(0, 3)).toBe("UNRESOLVED");
+
+  it("withholds a verdict when the baseline is too small or rank invalid", () => {
+    expect(verdictForRank(1, 2)).toBe("UNRESOLVED");
+    expect(verdictForRank(0, 20)).toBe("UNRESOLVED");
+    expect(verdictForRank(21, 20)).toBe("UNRESOLVED");
   });
-  it("keeps unresolved candidates unresolved", () => {
+
+  it("supports one submitted candidate when it appears in the real baseline", () => {
+    const candidate = { entityId: "id-b", name: "Place B", subtype: "urn:entity:place", rank: 3 };
     const result = evaluateCandidates([
-      { inputName: "Hotel Alpha", entity: null, resolution: "not_found" },
-      { inputName: "Hotel Beta", entity: { entityId: "id-b", name: "Hotel Beta", subtype: "urn:entity:place" }, resolution: "resolved" },
-      { inputName: "Hotel Gamma", entity: { entityId: "id-c", name: "Hotel Gamma", subtype: "urn:entity:place" }, resolution: "resolved" }
+      { inputName: "Place B", entity: candidate, resolution: "resolved" }
     ], [
-      { entityId: "id-b", name: "Hotel Beta", subtype: "urn:entity:place" },
-      { entityId: "id-c", name: "Hotel Gamma", subtype: "urn:entity:place" }
+      { entityId: "id-a", name: "Place A", subtype: "urn:entity:place", rank: 1 },
+      { entityId: "id-c", name: "Place C", subtype: "urn:entity:place", rank: 2 },
+      candidate
+    ]);
+    expect(result.rankedCandidateCount).toBe(1);
+    expect(result.baselineResultCount).toBe(3);
+    expect(result.candidates[0].qlooRank).toBe(3);
+    expect(result.candidates[0].evaluationValue).toBe(3);
+    expect(result.candidates[0].verdict).toBe("FAIL");
+  });
+
+  it("keeps a resolved candidate unresolved when Qloo did not return it", () => {
+    const result = evaluateCandidates([
+      { inputName: "Hotel Alpha", entity: { entityId: "id-a", name: "Hotel Alpha", subtype: "urn:entity:place" }, resolution: "resolved" }
+    ], [
+      { entityId: "id-b", name: "Place B", subtype: null, rank: 1 },
+      { entityId: "id-c", name: "Place C", subtype: null, rank: 2 },
+      { entityId: "id-d", name: "Place D", subtype: null, rank: 3 }
     ]);
     expect(result.candidates[0].verdict).toBe("UNRESOLVED");
-    expect(result.candidates[1].verdict).toBe("PASS");
-    expect(result.candidates[2].verdict).toBe("REVIEW");
-    expect(result.rankedCandidateCount).toBe(2);
+    expect(result.candidates[0].evaluationValue).toBeNull();
+    expect(result.rankedCandidateCount).toBe(0);
+  });
+
+  it("does not count one resolved entity twice", () => {
+    const shared = { entityId: "same", name: "Hotel Alpha", subtype: "urn:entity:place", rank: 1 };
+    const result = evaluateCandidates([
+      { inputName: "Hotel Alpha", entity: shared, resolution: "resolved" },
+      { inputName: "Alias", entity: { ...shared, name: "Alias" }, resolution: "resolved" }
+    ], [
+      shared,
+      { entityId: "other", name: "Place B", subtype: null, rank: 2 },
+      { entityId: "another", name: "Place C", subtype: null, rank: 3 }
+    ]);
+    expect(result.rankedCandidateCount).toBe(1);
   });
 });
 
-describe("Qloo response parsing", () => {
-  it("reads entity data from a results envelope", () => {
+describe("Qloo entity response parsing", () => {
+  it("reads entities from a standard results envelope", () => {
     expect(parseQlooEntities({ success: true, results: { entities: [
       { entity_id: "abc-123", name: "Hotel Alpha", subtype: "urn:entity:place" }
     ] } })).toEqual([{ entityId: "abc-123", name: "Hotel Alpha", subtype: "urn:entity:place" }]);
   });
-  it("prefers exact names and avoids ambiguous fuzzy matches", () => {
+
+  it("requires exact normalized names rather than guessing", () => {
     const entities = [
       { entityId: "1", name: "Dune", subtype: "urn:entity:movie" },
       { entityId: "2", name: "Dune: Part Two", subtype: "urn:entity:movie" }
     ];
     expect(chooseEntity("Dune", entities)?.entityId).toBe("1");
     expect(chooseEntity("Unknown title", entities)).toBeNull();
-    expect(chooseEntity("Dune", [entities[0]])?.entityId).toBe("1");
     expect(chooseEntity("Only one", [entities[0]])).toBeNull();
   });
 });
 
-
-import { InputValidationError, parseTasteTestInput } from "../src/lib/validation";
-
 describe("request validation", () => {
-  it("accepts a valid taste test request", () => {
-    expect(parseTasteTestInput({
-      anchors: [
-        { name: "Tyler, the Creator", type: "artist" },
-        { name: "Aesop", type: "brand" }
-      ],
-      candidates: ["Candidate A", "Candidate B"],
-      task: "Recommend a hotel",
-      location: "Copenhagen"
-    }).candidates).toEqual(["Candidate A", "Candidate B"]);
+  const valid = {
+    anchors: [{ name: "Aesop", type: "brand" }],
+    candidates: ["Candidate A"],
+    task: "Recommend a hotel",
+    location: "Copenhagen"
+  };
+
+  it("accepts one taste anchor and one candidate", () => {
+    expect(parseTasteTestInput(valid).candidates).toEqual(["Candidate A"]);
   });
 
-  it("rejects non-text candidate entries", () => {
-    expect(() => parseTasteTestInput({
-      anchors: [
-        { name: "Tyler, the Creator", type: "artist" },
-        { name: "Aesop", type: "brand" }
-      ],
-      candidates: ["Candidate A", 123],
-      task: "Recommend a hotel",
-      location: "Copenhagen"
-    })).toThrow(InputValidationError);
+  it("allows blank UI rows but needs at least one candidate", () => {
+    expect(parseTasteTestInput({ ...valid, candidates: ["Candidate A", "", "Candidate B"] }).candidates)
+      .toEqual(["Candidate A", "Candidate B"]);
+    expect(() => parseTasteTestInput({ ...valid, candidates: ["", " "] })).toThrow(InputValidationError);
   });
 
-  it("rejects duplicate anchors and too few candidates", () => {
-    expect(() => parseTasteTestInput({
-      anchors: [
-        { name: "Aesop", type: "brand" },
-        { name: "Aesop", type: "brand" }
-      ],
-      candidates: ["Candidate A", "Candidate B"],
-      task: "Recommend a hotel",
-      location: "Copenhagen"
-    })).toThrow(InputValidationError);
-
-    expect(() => parseTasteTestInput({
-      anchors: [
-        { name: "Tyler, the Creator", type: "artist" },
-        { name: "Aesop", type: "brand" }
-      ],
-      candidates: ["Only one"],
-      task: "Recommend a hotel",
-      location: "Copenhagen"
-    })).toThrow(InputValidationError);
+  it("rejects non-text candidates and duplicate inputs", () => {
+    expect(() => parseTasteTestInput({ ...valid, candidates: ["Candidate A", 123] })).toThrow(InputValidationError);
+    expect(() => parseTasteTestInput({ ...valid, anchors: [
+      { name: "Aesop", type: "brand" }, { name: "Aesop", type: "brand" }
+    ] })).toThrow(InputValidationError);
+    expect(() => parseTasteTestInput({ ...valid, candidates: ["Same", "same"] })).toThrow(InputValidationError);
   });
 });

@@ -1,53 +1,79 @@
 import type { CandidateResult, Verdict } from "./types";
-import type { QlooEntity } from "./qloo";
+import type { QlooEntity, RankedQlooEntity } from "./qloo";
 
-export function verdictForRank(rank: number, count: number): Verdict {
-  if (!Number.isInteger(rank) || rank < 1 || count < 2 || rank > count) return "UNRESOLVED";
-  const passCutoff = Math.ceil(count / 3);
-  const reviewCutoff = Math.ceil((count * 2) / 3);
+export function verdictForRank(rank: number, baselineCount: number): Verdict {
+  if (!Number.isInteger(rank) || rank < 1 || baselineCount < 3 || rank > baselineCount) return "UNRESOLVED";
+  const passCutoff = Math.ceil(baselineCount / 3);
+  const reviewCutoff = Math.ceil((baselineCount * 2) / 3);
   if (rank <= passCutoff) return "PASS";
   if (rank <= reviewCutoff) return "REVIEW";
   return "FAIL";
 }
 
 export function evaluateCandidates(
-  inputs: Array<{ inputName: string; entity: QlooEntity | null; resolution: "resolved" | "ambiguous" | "not_found" }>,
-  qlooResults: QlooEntity[]
-): { candidates: CandidateResult[]; rankedCandidateCount: number } {
-  const submittedIds = new Set(inputs.flatMap((item) => item.entity ? [item.entity.entityId.toUpperCase()] : []));
-  const ordered = qlooResults.filter((entity) => submittedIds.has(entity.entityId.toUpperCase()));
+  inputs: Array<{
+    inputName: string;
+    entity: QlooEntity | null;
+    resolution: "resolved" | "ambiguous" | "not_found";
+  }>,
+  baseline: RankedQlooEntity[]
+): { candidates: CandidateResult[]; rankedCandidateCount: number; baselineResultCount: number } {
   const rankById = new Map<string, number>();
-  ordered.forEach((entity, index) => {
+  for (const entity of baseline) {
     const id = entity.entityId.toUpperCase();
-    if (!rankById.has(id)) rankById.set(id, index + 1);
-  });
-  const count = rankById.size;
+    if (!rankById.has(id)) rankById.set(id, entity.rank);
+  }
+
+  const baselineResultCount = baseline.length;
+  const rankedIds = new Set<string>();
+
   const candidates = inputs.map((item): CandidateResult => {
     if (!item.entity) {
       return {
-        inputName: item.inputName, resolvedName: null, entityId: null, resolution: item.resolution,
-        qlooRank: null, verdict: "UNRESOLVED",
+        inputName: item.inputName,
+        resolvedName: null,
+        entityId: null,
+        resolution: item.resolution,
+        evaluationValue: null,
+        qlooRank: null,
+        verdict: "UNRESOLVED",
         evidence: item.resolution === "ambiguous"
-          ? "Qloo returned multiple plausible matches. Refine the candidate name; no verdict was assigned."
+          ? "Qloo returned multiple possible matches. Use a more precise name; no verdict was assigned."
           : "Qloo did not resolve this candidate. No verdict was assigned."
       };
     }
-    const rank = rankById.get(item.entity.entityId.toUpperCase()) ?? null;
-    if (rank === null || count < 2) {
+
+    const id = item.entity.entityId.toUpperCase();
+    const rank = rankById.get(id) ?? null;
+    if (rank === null) {
       return {
-        inputName: item.inputName, resolvedName: item.entity.name, entityId: item.entity.entityId,
-        resolution: "resolved", qlooRank: rank, verdict: "UNRESOLVED",
-        evidence: rank === null
-          ? "Qloo resolved this entity but did not return it in the constrained ranking; evidence is insufficient."
-          : "Fewer than two submitted candidates have usable Qloo ranking evidence."
+        inputName: item.inputName,
+        resolvedName: item.entity.name,
+        entityId: item.entity.entityId,
+        resolution: "resolved",
+        evaluationValue: null,
+        qlooRank: null,
+        verdict: "UNRESOLVED",
+        evidence: "The entity resolved, but Qloo did not include it in the returned affinity-ranked baseline. Absence from this result window is not proof of a mismatch."
       };
     }
+
+    rankedIds.add(id);
+    const verdict = verdictForRank(rank, baselineResultCount);
     return {
-      inputName: item.inputName, resolvedName: item.entity.name, entityId: item.entity.entityId,
-      resolution: "resolved", qlooRank: rank, verdict: verdictForRank(rank, count),
-      evidence: "Qloo ranked this resolved entity " + rank + " of " + count +
-        " submitted candidates for the provided taste anchors and location. This is a relative rank, not a probability or guarantee."
+      inputName: item.inputName,
+      resolvedName: item.entity.name,
+      entityId: item.entity.entityId,
+      resolution: "resolved",
+      evaluationValue: rank,
+      qlooRank: rank,
+      verdict,
+      evidence: baselineResultCount < 3
+        ? "Qloo returned too few baseline places to apply the documented rank thresholds. No verdict was assigned."
+        : "Qloo placed this entity at rank " + rank + " of " + baselineResultCount +
+          " returned places sorted by affinity for the supplied taste anchors and location. This is an ordinal position, not a numeric affinity score or a guarantee of preference."
     };
   });
-  return { candidates, rankedCandidateCount: count };
+
+  return { candidates, rankedCandidateCount: rankedIds.size, baselineResultCount };
 }

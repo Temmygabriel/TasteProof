@@ -51,8 +51,8 @@ async function main() {
   };
   const first = await runTasteTest(firstInput);
   reportRun(first, "Initial live test");
-  if (first.rankedCandidateCount < 2) {
-    throw new Error("The initial run returned fewer than two ranked candidates. Live verification failed.");
+  if (first.rankedCandidateCount < 1 || first.baselineResultCount < 3) {
+    throw new Error("The initial run returned no candidate in a baseline of at least three Qloo results. Live verification failed.");
   }
 
   const swappedAnchors = firstInput.anchors.map((anchor, index) =>
@@ -62,7 +62,7 @@ async function main() {
   );
   const second = await runTasteTest({ ...firstInput, anchors: swappedAnchors });
   reportRun(second, "Anchor Swap live test");
-  if (first.testId === second.testId || second.rankedCandidateCount < 2) {
+  if (first.testId === second.testId || second.rankedCandidateCount < 1 || second.baselineResultCount < 3) {
     throw new Error("The second live Anchor Swap run is incomplete.");
   }
 

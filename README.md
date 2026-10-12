@@ -11,7 +11,7 @@ TasteProof is not a recommendation generator. It tests recommendations an agent 
 1. Enter two to five taste anchors and choose a Qloo category for each.
 2. Paste two to ten recommendations from the agent being tested.
 3. TasteProof resolves the anchors and candidate places using Qloo.
-4. TasteProof requests an Insights ranking for the candidates under the taste and location context.
+4. TasteProof requests a broader set of up to 20 places from Qloo Insights, sorted by affinity for the supplied taste anchors and location.
 5. It assigns PASS, REVIEW, FAIL or UNRESOLVED using a published relative-ranking rule.
 6. Change one anchor, run a second test and compare the actual results.
 
@@ -63,7 +63,7 @@ The Qloo lookup routes use a best-effort per-process rate limit. This helps agai
 
 The verdict is comparative: the top third of ranked candidates receives PASS, the middle third REVIEW, and the bottom third FAIL. If fewer than two candidates have usable evidence, TasteProof returns UNRESOLVED. These are not probabilities, psychological claims or guarantees that a person will like an item. The project never invents numeric affinity scores.
 
-Candidate matching depends on Qloo resolving submitted place names and returning them in the constrained Insights response. A successful website build alone does not prove the live Qloo workflow works; the live verification run is a separate gate.
+Candidate matching depends on Qloo resolving submitted place names and returning them in the broader Insights baseline. A successful website build alone does not prove the live Qloo workflow works; the live verification run is a separate gate.
 
 ## License
 

@@ -13,7 +13,7 @@ const anchorTypeOptions: Array<{ value: AnchorType; label: string }> = [
   { value: "artist", label: "Artist" }, { value: "brand", label: "Brand" },
   { value: "movie", label: "Film" }, { value: "tv_show", label: "TV series" },
   { value: "book", label: "Book" }, { value: "place", label: "Place" },
-  { value: "podcast", label: "Podcast" }, { value: "video_game", label: "Video game" }
+  { value: "podcast", label: "Podcast" }, { value: "videogame", label: "Video game" }
 ];
 const verdictLabel: Record<Verdict, string> = {
   PASS: "Pass", REVIEW: "Review", FAIL: "Fail", UNRESOLVED: "Unresolved"
@@ -140,7 +140,7 @@ export default function HomePage() {
               <input className="text-field" id="task" value={task} maxLength={180} required onChange={(event) => setTask(event.target.value)} />
               <label htmlFor="location">Location context</label>
               <input className="text-field" id="location" value={location} maxLength={100} required onChange={(event) => setLocation(event.target.value)} />
-              <div className="candidate-head"><label>Recommendations from the agent</label><small>PASTE 2–3 ITEMS</small></div>
+              <div className="candidate-head"><label>Recommendations from the agent</label><small>PASTE UP TO 3 ITEMS</small></div>
               <div className="candidate-list">
                 {candidates.map((candidate, index) => (
                   <div className="candidate-row" key={index}><span>0{index + 1}</span>
@@ -187,17 +187,17 @@ export default function HomePage() {
 
         <section className="results-section">
           <div className="section-head"><div><small>02 / INSPECT</small><h2>Evidence receipt</h2></div>
-            <div className="section-meta"><span className="meta-chip">{result ? "LIVE RESULT" : "AWAITING RUN"}</span><small>{result ? result.rankedCandidateCount + " candidates with ranking evidence" : "No test run yet"}</small></div>
+            <div className="section-meta"><span className="meta-chip">{result ? "LIVE RESULT" : "AWAITING RUN"}</span><small>{result ? result.rankedCandidateCount + " candidates matched · baseline " + result.baselineResultCount : "No test run yet"}</small></div>
           </div>
           {!result ? <div className="empty-receipt"><span>＋</span><div><strong>Your receipt will appear here.</strong><p>Run a test to inspect resolved entities, the Qloo ordering, the rule, and evidence. Nothing is pre-scored.</p></div></div> : (
             <div className="receipt">
-              <div className="receipt-title"><div><small>TEST RECEIPT / QLOO LIVE</small><h3>{result.rankedCandidateCount} candidates with usable evidence</h3></div><span>RUN {result.testId.slice(0, 8).toUpperCase()}</span></div>
+              <div className="receipt-title"><div><small>TEST RECEIPT / QLOO LIVE</small><h3>{result.rankedCandidateCount} submitted candidates matched the Qloo baseline</h3></div><span>RUN {result.testId.slice(0, 8).toUpperCase()}</span></div>
               <div className="receipt-meta"><div><small>TASK</small><strong>{result.task}</strong></div><div><small>LOCATION</small><strong>{result.location}</strong></div><div><small>CREATED</small><strong>{new Date(result.createdAt).toLocaleString()}</strong></div></div>
               <div className="resolved-anchors"><small>RESOLVED TASTE ANCHORS</small><div>{result.anchors.map((anchor) => <span key={anchor.entityId}><small>{anchor.type.replace("_", " ").toUpperCase()}</small><strong>{anchor.resolvedName}</strong><code className="entity-id">{anchor.entityId}</code></span>)}</div></div>
               <div className="result-columns"><span>AGENT CANDIDATE</span><span>QLOO RANK</span><span>VERDICT</span></div>
               {result.candidates.map((candidate, index) => <article className="result-row" key={candidate.inputName + "-" + index}>
                 <div className="result-name"><small>0{index + 1}</small><div><strong>{candidate.resolvedName || candidate.inputName}</strong><p>{candidate.resolvedName ? "Resolved by Qloo · " + candidate.entityId : candidate.resolution === "ambiguous" ? "Multiple possible matches" : "Not resolved"}</p></div></div>
-                <div className="rank">{candidate.qlooRank ? <><strong>#{candidate.qlooRank}</strong><span>of {result.rankedCandidateCount}</span></> : <span>No rank</span>}</div>
+                <div className="rank">{candidate.qlooRank ? <><strong>#{candidate.qlooRank}</strong><span>of {result.baselineResultCount}</span></> : <span>No rank</span>}</div>
                 <div><span className={"verdict verdict-" + candidate.verdict.toLowerCase()}>{verdictLabel[candidate.verdict]}</span></div>
                 <p className="evidence-copy">{candidate.evidence}</p>
               </article>)}

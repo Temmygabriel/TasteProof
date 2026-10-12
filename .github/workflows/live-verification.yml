@@ -22,7 +22,7 @@ on:
         required: true
         default: "tv_show"
         type: choice
-        options: [tv_show, artist, brand, movie, book, place, podcast, video_game]
+        options: [tv_show, artist, brand, movie, book, place, podcast, videogame]
 
 permissions:
   contents: read

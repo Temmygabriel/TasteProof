@@ -22,8 +22,8 @@ function cleanText(value: unknown, label: string, maxLength: number): string {
 export function parseTasteTestInput(value: unknown): TasteTestInput {
   if (!plainObject(value)) throw new InputValidationError("The request body must be a JSON object.");
 
-  if (!Array.isArray(value.anchors) || value.anchors.length < 2 || value.anchors.length > 5) {
-    throw new InputValidationError("Provide between 2 and 5 taste anchors.");
+  if (!Array.isArray(value.anchors) || value.anchors.length < 1 || value.anchors.length > 5) {
+    throw new InputValidationError("Provide between 1 and 5 taste anchors.");
   }
   const anchors = value.anchors.map((item, index) => {
     if (!plainObject(item)) throw new InputValidationError("Taste anchor " + (index + 1) + " is invalid.");
@@ -51,8 +51,8 @@ export function parseTasteTestInput(value: unknown): TasteTestInput {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter(Boolean);
-  if (candidates.length < 2 || candidates.length > 10) {
-    throw new InputValidationError("Provide between 2 and 10 non-empty recommendation candidates.");
+  if (candidates.length < 1 || candidates.length > 10) {
+    throw new InputValidationError("Provide between 1 and 10 non-empty recommendation candidates.");
   }
   if (candidates.some((item) => item.length > 160)) {
     throw new InputValidationError("Each recommendation candidate must be 160 characters or fewer.");

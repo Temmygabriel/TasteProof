@@ -15,7 +15,7 @@
       "post": {
         "operationId": "evaluateRecommendationTasteFitAlias",
         "summary": "Evaluate recommendations against a supplied taste context",
-        "description": "Submit recommendations produced by an external agent. TasteProof resolves the anchors and places through Qloo, requests a live Insights ranking, and returns a deterministic verdict and evidence. It does not generate the recommendations.",
+        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED.",
         "requestBody": {
           "required": true,
           "content": {
@@ -31,7 +31,7 @@
                 "properties": {
                   "anchors": {
                     "type": "array",
-                    "minItems": 2,
+                    "minItems": 1,
                     "maxItems": 5,
                     "items": {
                       "type": "object",
@@ -63,7 +63,7 @@
                   },
                   "candidates": {
                     "type": "array",
-                    "minItems": 2,
+                    "minItems": 1,
                     "maxItems": 10,
                     "items": {
                       "type": "string",
@@ -112,7 +112,7 @@
       "post": {
         "operationId": "evaluateRecommendationTasteFit",
         "summary": "Run TasteProof as an agent-callable evaluation tool",
-        "description": "Canonical tool endpoint. Submit recommendations from the calling agent; TasteProof resolves entities with Qloo, requests Qloo Insights affinity ordering, and returns deterministic verdicts and evidence.",
+        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED.",
         "requestBody": {
           "required": true,
           "content": {
@@ -128,7 +128,7 @@
                 "properties": {
                   "anchors": {
                     "type": "array",
-                    "minItems": 2,
+                    "minItems": 1,
                     "maxItems": 5,
                     "items": {
                       "type": "object",
@@ -160,7 +160,7 @@
                   },
                   "candidates": {
                     "type": "array",
-                    "minItems": 2,
+                    "minItems": 1,
                     "maxItems": 10,
                     "items": {
                       "type": "string",
@@ -236,7 +236,7 @@
                       "book",
                       "place",
                       "podcast",
-                      "video_game"
+                      "videogame"
                     ]
                   }
                 }
@@ -267,7 +267,7 @@
       "post": {
         "operationId": "rankResolvedQlooCandidates",
         "summary": "Get a Qloo Insights ranking for resolved candidates",
-        "description": "Submit entity IDs returned by Qloo search. TasteProof calls Qloo Insights with interest entities, candidate filters and a locality context.",
+        "description": "Submit Qloo entity IDs. TasteProof queries a broader Insights baseline sorted by affinity, then filters the submitted candidates against provider results while preserving original Qloo ranks.",
         "requestBody": {
           "required": true,
           "content": {
@@ -282,7 +282,7 @@
                 "properties": {
                   "anchorEntityIds": {
                     "type": "array",
-                    "minItems": 2,
+                    "minItems": 1,
                     "maxItems": 5,
                     "items": {
                       "type": "string",
@@ -292,7 +292,7 @@
                   },
                   "candidateEntityIds": {
                     "type": "array",
-                    "minItems": 2,
+                    "minItems": 1,
                     "maxItems": 10,
                     "items": {
                       "type": "string",

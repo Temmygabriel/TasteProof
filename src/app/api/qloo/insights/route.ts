@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCandidateRanking } from "../../../../lib/qloo";
+import { getAffinityBaseline } from "../../../../lib/qloo";
 import { qlooErrorResponse } from "../../../../lib/qloo-api-response";
 import { rateLimit } from "../../../../lib/rate-limit";
 
@@ -34,25 +34,30 @@ export async function POST(request: Request) {
   }
 
   if (!isRecord(body) ||
-      !validIds(body.anchorEntityIds, 2, 5) ||
-      !validIds(body.candidateEntityIds, 2, 10) ||
+      !validIds(body.anchorEntityIds, 1, 5) ||
+      !validIds(body.candidateEntityIds, 1, 10) ||
       typeof body.location !== "string" ||
       !body.location.trim() ||
       body.location.trim().length > 100) {
     return NextResponse.json({
-      error: "Provide 2–5 anchorEntityIds, 2–10 candidateEntityIds and a location of 100 characters or fewer."
+      error: "Provide 1–5 anchorEntityIds, 1–10 candidateEntityIds and a location of 100 characters or fewer."
     }, { status: 400 });
   }
 
   try {
-    const entities = await getCandidateRanking(
+    const baseline = await getAffinityBaseline(
       body.anchorEntityIds.map((id) => id.trim()),
-      body.candidateEntityIds.map((id) => id.trim()),
-      body.location.trim()
+      body.location.trim(),
+      20
     );
+    const submitted = new Set(body.candidateEntityIds.map((id) => id.trim().toUpperCase()));
+    const entities = baseline.filter((entity) => submitted.has(entity.entityId.toUpperCase()));
+    const returned = new Set(entities.map((entity) => entity.entityId.toUpperCase()));
     return NextResponse.json({
       orderingSource: "Qloo Insights response order sorted by affinity",
-      entities: entities.map((entity, index) => ({ ...entity, rank: index + 1 }))
+      baselineResultCount: baseline.length,
+      entities,
+      unresolvedEntityIds: body.candidateEntityIds.filter((id) => !returned.has(id.trim().toUpperCase()))
     }, { headers: { "Cache-Control": "no-store", "X-RateLimit-Remaining": String(limit.remaining) } });
   } catch (error) {
     const response = qlooErrorResponse(error);

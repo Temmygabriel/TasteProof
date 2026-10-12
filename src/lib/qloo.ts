@@ -6,6 +6,10 @@ export interface QlooEntity {
   subtype: string | null;
 }
 
+export interface RankedQlooEntity extends QlooEntity {
+  rank: number;
+}
+
 export class QlooConfigurationError extends Error {
   constructor(message: string) {
     super(message);
@@ -33,6 +37,7 @@ function qlooConfig(): { baseUrl: string; apiKey: string } {
   } catch {
     throw new QlooConfigurationError("QLOO_BASE_URL must be a valid HTTPS Qloo host.");
   }
+
   const allowedHosts = new Set(["hackathon.api.qloo.com", "api.qloo.com", "staging.api.qloo.com"]);
   if (parsed.protocol !== "https:" || !allowedHosts.has(parsed.hostname) || (parsed.pathname !== "/" && parsed.pathname !== "")) {
     throw new QlooConfigurationError("QLOO_BASE_URL must be an approved Qloo origin without a path.");
@@ -65,6 +70,7 @@ async function getJson(url: URL, allowNotFound = false): Promise<unknown | null>
     if (response.status === 429) throw new QlooApiError(429, "Qloo rate-limited the request. Wait briefly before trying again.");
     throw new QlooApiError(502, "Qloo returned an upstream error (HTTP " + response.status + "). No verdict was produced.");
   }
+
   try {
     return await response.json();
   } catch {
@@ -88,6 +94,7 @@ export function parseQlooEntities(payload: unknown): QlooEntity[] {
       : Array.isArray(root.entities)
         ? root.entities
         : [];
+
   return rawList.flatMap((raw): QlooEntity[] => {
     const row = objectValue(raw);
     if (!row) return [];
@@ -106,12 +113,10 @@ function normalizeEntityName(name: string): string {
 export function chooseEntity(query: string, entities: QlooEntity[]): QlooEntity | null {
   const normalized = normalizeEntityName(query);
   const exact = entities.filter((entity) => normalizeEntityName(entity.name) === normalized);
-  if (exact.length === 1) return exact[0];
-  if (exact.length > 1) return null;
-  return null;
+  return exact.length === 1 ? exact[0] : null;
 }
 
-export async function searchEntities(query: string, type: AnchorType | "place"): Promise<QlooEntity[]> {
+export async function searchEntities(query: string, type: AnchorType): Promise<QlooEntity[]> {
   const config = qlooConfig();
   const url = new URL("/search", config.baseUrl);
   url.searchParams.set("query", query);
@@ -121,14 +126,34 @@ export async function searchEntities(query: string, type: AnchorType | "place"):
   return payload === null ? [] : parseQlooEntities(payload);
 }
 
-export async function getCandidateRanking(anchorIds: string[], candidateIds: string[], location: string): Promise<QlooEntity[]> {
+/**
+ * Pull a broader baseline from Qloo and preserve the provider's affinity order.
+ * TasteProof uses ordinal position only; it does not invent an affinity score.
+ */
+export async function getAffinityBaseline(
+  anchorEntityIds: string[],
+  location: string,
+  requestedTake = 20
+): Promise<RankedQlooEntity[]> {
   const config = qlooConfig();
   const url = new URL("/v2/insights", config.baseUrl);
   url.searchParams.set("filter.type", "urn:entity:place");
-  url.searchParams.set("signal.interests.entities", anchorIds.join(","));
-  url.searchParams.set("filter.results.entities", candidateIds.join(","));
+  url.searchParams.set("signal.interests.entities", anchorEntityIds.join(","));
   url.searchParams.set("filter.location.query", location);
   url.searchParams.set("sort_by", "affinity");
-  url.searchParams.set("take", String(Math.max(10, candidateIds.length)));
-  return parseQlooEntities(await getJson(url));
+  url.searchParams.set("take", String(Math.max(3, Math.min(20, Math.trunc(requestedTake)))));
+
+  const parsed = parseQlooEntities(await getJson(url));
+  const unique = Array.from(new Map(parsed.map((entity) => [entity.entityId.toUpperCase(), entity])).values());
+  return unique.map((entity, index) => ({ ...entity, rank: index + 1 }));
+}
+
+export async function getCandidateRanking(
+  anchorEntityIds: string[],
+  candidateEntityIds: string[],
+  location: string
+): Promise<RankedQlooEntity[]> {
+  const candidateSet = new Set(candidateEntityIds.map((id) => id.toUpperCase()));
+  const baseline = await getAffinityBaseline(anchorEntityIds, location, 20);
+  return baseline.filter((entity) => candidateSet.has(entity.entityId.toUpperCase()));
 }

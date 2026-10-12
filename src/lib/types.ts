@@ -1,5 +1,5 @@
 export const ANCHOR_TYPES = [
-  "artist", "brand", "movie", "tv_show", "book", "place", "podcast", "video_game"
+  "artist", "brand", "movie", "tv_show", "book", "place", "podcast", "videogame"
 ] as const;
 
 export type AnchorType = (typeof ANCHOR_TYPES)[number];
@@ -29,6 +29,7 @@ export interface CandidateResult {
   resolvedName: string | null;
   entityId: string | null;
   resolution: "resolved" | "ambiguous" | "not_found";
+  evaluationValue: number | null;
   qlooRank: number | null;
   verdict: Verdict;
   evidence: string;
@@ -43,6 +44,7 @@ export interface TasteTestRun {
   anchors: ResolvedAnchor[];
   candidates: CandidateResult[];
   rankedCandidateCount: number;
+  baselineResultCount: number;
   evaluationRule: string;
   providerNote: string;
 }

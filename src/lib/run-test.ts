@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { evaluateCandidates } from "./evaluate";
-import { chooseEntity, searchEntities, getCandidateRanking, type QlooEntity } from "./qloo";
+import { chooseEntity, searchEntities, getAffinityBaseline, type QlooEntity } from "./qloo";
 import type { TasteTestInput, TasteTestRun, AnchorType } from "./types";
 
 export class AnchorResolutionError extends Error {
@@ -9,6 +9,13 @@ export class AnchorResolutionError extends Error {
     super("One or more taste anchors could not be resolved uniquely by Qloo.");
     this.name = "AnchorResolutionError";
     this.unresolvedAnchors = items;
+  }
+}
+
+export class DuplicateResolvedAnchorError extends Error {
+  constructor() {
+    super("Two taste anchors resolved to the same Qloo entity. Choose distinct anchors.");
+    this.name = "DuplicateResolvedAnchorError";
   }
 }
 
@@ -23,25 +30,31 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
     anchor,
     ...resolveOne(anchor.name, await searchEntities(anchor.name, anchor.type))
   })));
-  const missing = anchorMatches.filter((match) => !match.entity).map((match) => ({
-    name: match.anchor.name, type: match.anchor.type, candidatesFound: match.resolution === "ambiguous" ? 2 : 0
+
+  const unresolvedAnchors = anchorMatches.filter((match) => !match.entity).map((match) => ({
+    name: match.anchor.name,
+    type: match.anchor.type,
+    candidatesFound: match.resolution === "ambiguous" ? 2 : 0
   }));
-  if (missing.length) throw new AnchorResolutionError(missing);
+  if (unresolvedAnchors.length) throw new AnchorResolutionError(unresolvedAnchors);
 
   const anchors = anchorMatches.flatMap((match) => match.entity ? [{
-    inputName: match.anchor.name, resolvedName: match.entity.name, type: match.anchor.type, entityId: match.entity.entityId
+    inputName: match.anchor.name,
+    resolvedName: match.entity.name,
+    type: match.anchor.type,
+    entityId: match.entity.entityId
   }] : []);
+
+  const uniqueAnchorIds = new Set(anchors.map((anchor) => anchor.entityId.toUpperCase()));
+  if (uniqueAnchorIds.size !== anchors.length) throw new DuplicateResolvedAnchorError();
 
   const candidateMatches = await Promise.all(input.candidates.map(async (name) => ({
     inputName: name,
     ...resolveOne(name, await searchEntities(name, "place"))
   })));
-  const resolvedIds = candidateMatches.flatMap((match) => match.entity ? [match.entity.entityId] : []);
-  const uniqueIds = Array.from(new Map(resolvedIds.map((id) => [id.toUpperCase(), id])).values());
 
-  let ranked: QlooEntity[] = [];
-  if (uniqueIds.length >= 2) ranked = await getCandidateRanking(anchors.map((anchor) => anchor.entityId), uniqueIds, input.location);
-  const evaluation = evaluateCandidates(candidateMatches, ranked);
+  const baseline = await getAffinityBaseline(anchors.map((anchor) => anchor.entityId), input.location, 20);
+  const evaluation = evaluateCandidates(candidateMatches, baseline);
 
   return {
     testId: randomUUID(),
@@ -52,7 +65,10 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
     anchors,
     candidates: evaluation.candidates,
     rankedCandidateCount: evaluation.rankedCandidateCount,
-    evaluationRule: "Top third of submitted candidates in Qloo's returned order = PASS; middle third = REVIEW; bottom third = FAIL. With fewer than two ranked candidates, return UNRESOLVED. This is comparative, not predicted liking.",
-    providerNote: "Based on live Qloo entity IDs and the order returned by Qloo Insights. TasteProof does not invent numeric affinity scores."
+    baselineResultCount: evaluation.baselineResultCount,
+    evaluationRule:
+      "Evaluate each submitted candidate against Qloo's actual Insights baseline of up to 20 places sorted by affinity. Top third = PASS, middle third = REVIEW, bottom third = FAIL. Candidates absent from the returned baseline, or a baseline with fewer than three entities, remain UNRESOLVED. Rank is ordinal, not a numeric affinity score.",
+    providerNote:
+      "Live Qloo entity search plus Qloo Insights response order sorted by affinity. No numeric affinity score is fabricated."
   };
 }
