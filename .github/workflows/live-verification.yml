@@ -1,0 +1,58 @@
+name: TasteProof live verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidates:
+        description: "Three comma-separated place names from an external agent's actual output"
+        required: true
+        type: string
+      location:
+        description: "Location used in the recommendation task"
+        required: true
+        default: "Copenhagen"
+        type: string
+      swap_anchor:
+        description: "Taste anchor to use for the second run"
+        required: true
+        default: "The Bear"
+        type: string
+      swap_anchor_type:
+        description: "Qloo category for the replacement anchor"
+        required: true
+        default: "tv_show"
+        type: choice
+        options: [tv_show, artist, brand, movie, book, place, podcast, videogame]
+
+permissions:
+  contents: read
+
+jobs:
+  live-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
+      QLOO_BASE_URL: ${{ vars.QLOO_BASE_URL }}
+      TASTEPROOF_DEMO_CANDIDATES: ${{ inputs.candidates }}
+      TASTEPROOF_LOCATION: ${{ inputs.location }}
+      TASTEPROOF_SWAP_ANCHOR: ${{ inputs.swap_anchor }}
+      TASTEPROOF_SWAP_ANCHOR_TYPE: ${{ inputs.swap_anchor_type }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies in GitHub Actions
+        run: npm install --no-audit --no-fund
+      - name: Require the Qloo secret without printing it
+        shell: bash
+        run: |
+          if [ -z "$QLOO_API_KEY" ]; then
+            echo "::error::Add QLOO_API_KEY under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - name: Run real test and anchor-swap test
+        run: npm run verify-demo

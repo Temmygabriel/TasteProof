@@ -1,0 +1,27 @@
+{
+  "name": "tasteproof",
+  "version": "0.1.0",
+  "private": false,
+  "description": "An evidence-first taste QA tool for AI-agent recommendations, grounded in Qloo.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "verify-demo": "tsx scripts/verify-demo.ts"
+  },
+  "dependencies": {
+    "next": "16.4.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.30",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.7",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}

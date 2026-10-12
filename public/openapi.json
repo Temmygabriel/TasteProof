@@ -1,0 +1,55 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TasteProof Agent Evaluation Tool",
+    "version": "0.1.0",
+    "description": "Resolve submitted taste anchors and candidate places through Qloo, then return a relative ranking verdict with evidence."
+  },
+  "servers": [{ "url": "/" }],
+  "paths": {
+    "/api/evaluate": {
+      "post": {
+        "operationId": "evaluateRecommendationTasteFit",
+        "summary": "Evaluate recommendations against a supplied taste context",
+        "description": "Submit recommendations produced by an external agent. TasteProof resolves the anchors and places through Qloo, requests a live Insights ranking, and returns a deterministic verdict and evidence. It does not generate the recommendations.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["anchors", "candidates", "task", "location"],
+                "properties": {
+                  "anchors": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 5,
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "type"],
+                      "properties": {
+                        "name": {"type": "string", "minLength": 1, "maxLength": 120},
+                        "type": {"type": "string", "enum": ["artist", "brand", "movie", "tv_show", "book", "place", "podcast", "videogame"]}
+                      }
+                    }
+                  },
+                  "candidates": {"type": "array", "minItems": 2, "maxItems": 10, "items": {"type": "string", "minLength": 1, "maxLength": 160}},
+                  "task": {"type": "string", "minLength": 1, "maxLength": 180},
+                  "location": {"type": "string", "minLength": 1, "maxLength": 100}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Live Qloo result with resolved entities, relative ranks, verdicts and evidence."},
+          "400": {"description": "Invalid input."},
+          "422": {"description": "One or more taste anchors could not be resolved uniquely."},
+          "429": {"description": "Qloo rate limit."},
+          "502": {"description": "Upstream Qloo error."},
+          "503": {"description": "Qloo key missing or denied."}
+        }
+      }
+    }
+  }
+}
