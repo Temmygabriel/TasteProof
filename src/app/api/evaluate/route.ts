@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AnchorResolutionError, runTasteTest } from "../../../lib/run-test";
+import { AnchorResolutionError, DuplicateResolvedAnchorError, runTasteTest } from "../../../lib/run-test";
 import { QlooApiError, QlooConfigurationError } from "../../../lib/qloo";
 import { InputValidationError, parseTasteTestInput } from "../../../lib/validation";
 import { rateLimit } from "../../../lib/rate-limit";
@@ -29,8 +29,11 @@ export async function POST(request: Request) {
     if (error instanceof InputValidationError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    if (error instanceof AnchorResolutionError) {
-      return NextResponse.json({ error: error.message, unresolvedAnchors: error.unresolvedAnchors }, { status: 422 });
+    if (error instanceof AnchorResolutionError || error instanceof DuplicateResolvedAnchorError) {
+      return NextResponse.json({
+        error: error.message,
+        unresolvedAnchors: error instanceof AnchorResolutionError ? error.unresolvedAnchors : []
+      }, { status: 422 });
     }
     if (error instanceof QlooConfigurationError) {
       return NextResponse.json({ error: error.message, code: "QLOO_NOT_CONFIGURED" }, { status: 503 });

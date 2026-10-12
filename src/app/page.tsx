@@ -60,6 +60,22 @@ export default function HomePage() {
     }));
   }
 
+  function addAnchor() {
+    setAnchors((current) => current.length >= 5 ? current : [...current, { name: "", type: "artist" }]);
+  }
+
+  function removeAnchor(index: number) {
+    setAnchors((current) => current.length <= 1 ? current : current.filter((_, i) => i !== index));
+  }
+
+  function addCandidate() {
+    setCandidates((current) => current.length >= 10 ? current : [...current, ""]);
+  }
+
+  function removeCandidate(index: number) {
+    setCandidates((current) => current.length <= 1 ? current : current.filter((_, i) => i !== index));
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -128,10 +144,12 @@ export default function HomePage() {
                     <select aria-label={"Category for taste anchor " + (index + 1)} value={anchor.type} onChange={(event) => setAnchor(index, "type", event.target.value)}>
                       {anchorTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
+                    <button className="row-remove anchor-remove" type="button" aria-label={"Remove taste anchor " + (index + 1)} disabled={anchors.length <= 1} onClick={() => removeAnchor(index)}>×</button>
                   </div>
                 ))}
               </div>
-              <p className="microcopy">Names are resolved against the live Qloo API. Choose the right category for every anchor.</p>
+              <button className="add-row" type="button" disabled={anchors.length >= 5} onClick={addAnchor}>+ Add taste anchor <span>{anchors.length}/5</span></button>
+              <p className="microcopy">Use one to five taste anchors. Names must resolve to an exact Qloo entity match.</p>
             </section>
 
             <section className="form-section">
@@ -140,16 +158,18 @@ export default function HomePage() {
               <input className="text-field" id="task" value={task} maxLength={180} required onChange={(event) => setTask(event.target.value)} />
               <label htmlFor="location">Location context</label>
               <input className="text-field" id="location" value={location} maxLength={100} required onChange={(event) => setLocation(event.target.value)} />
-              <div className="candidate-head"><label>Recommendations from the agent</label><small>PASTE UP TO 3 ITEMS</small></div>
+              <div className="candidate-head"><label>Recommendations from the agent</label><small>UP TO 10 ITEMS</small></div>
               <div className="candidate-list">
                 {candidates.map((candidate, index) => (
-                  <div className="candidate-row" key={index}><span>0{index + 1}</span>
+                  <div className="candidate-row" key={index}><span>{String(index + 1).padStart(2, "0")}</span>
                     <input aria-label={"Recommendation candidate " + (index + 1)} value={candidate} maxLength={160}
-                      placeholder={index === 0 ? "First hotel or place" : index === 1 ? "Second hotel or place" : "Third hotel or place"}
+                      placeholder={index === 0 ? "First hotel or place" : index === 1 ? "Second hotel or place" : index === 2 ? "Third hotel or place" : "Additional place"}
                       onChange={(event) => setCandidates((current) => current.map((item, i) => i === index ? event.target.value : item))} />
+                    <button className="row-remove" type="button" aria-label={"Remove recommendation candidate " + (index + 1)} disabled={candidates.length <= 1} onClick={() => removeCandidate(index)}>×</button>
                   </div>
                 ))}
               </div>
+              <button className="add-row" type="button" disabled={candidates.length >= 10} onClick={addCandidate}>+ Add candidate <span>{candidates.length}/10</span></button>
               <p className="microcopy">Paste candidate names returned by your agent. TasteProof does not invent a candidate list or a Qloo result.</p>
             </section>
 
