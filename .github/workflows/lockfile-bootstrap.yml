@@ -36,7 +36,7 @@ jobs:
       - name: Commit lockfile to default branch
         shell: bash
         run: |
-          if git diff --quiet -- package-lock.json; then
+          if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 && git diff --quiet -- package-lock.json; then
             echo "package-lock.json is already current; no commit needed."
             exit 0
           fi
