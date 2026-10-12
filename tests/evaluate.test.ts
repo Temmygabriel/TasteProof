@@ -63,8 +63,15 @@ describe("request validation", () => {
   });
 
   it("rejects non-text candidate entries", () => {
-    expect(() => parseTasteTestInput({ ...valid, candidates: ["Candidate A", 123] }))
-      .toThrow(InputValidationError);
+    expect(() => parseTasteTestInput({
+      anchors: [
+        { name: "Tyler, the Creator", type: "artist" },
+        { name: "Aesop", type: "brand" }
+      ],
+      candidates: ["Candidate A", 123],
+      task: "Recommend a hotel",
+      location: "Copenhagen"
+    })).toThrow(InputValidationError);
   });
 
   it("rejects duplicate anchors and too few candidates", () => {
