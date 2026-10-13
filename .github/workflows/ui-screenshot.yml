@@ -1,0 +1,100 @@
+name: Capture TasteProof UI preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/app/page.tsx'
+      - 'src/app/globals.css'
+      - 'src/app/layout.tsx'
+      - 'public/logo.svg'
+      - 'public/favicon.svg'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ui-screenshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tasteproof-ui-preview
+  cancel-in-progress: false
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
+      QLOO_BASE_URL: ${{ vars.QLOO_BASE_URL }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pin npm with the peer-resolver fix
+        run: npm install --global npm@11.19.1
+      - name: Require configured Qloo secret without printing it
+        shell: bash
+        run: |
+          if [ -z "$QLOO_API_KEY" ]; then
+            echo "::error::Add QLOO_API_KEY under Settings > Secrets and variables > Actions, then rerun this workflow."
+            exit 1
+          fi
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build production app
+        run: npm run build
+      - name: Install Chromium in the hosted runner
+        run: npx --yes playwright@1.56.1 install --with-deps chromium
+      - name: Start production server and verify configuration badge
+        shell: bash
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/tasteproof-next.log 2>&1 &
+          echo $! > /tmp/tasteproof-next.pid
+          for attempt in {1..30}; do
+            if curl --silent --show-error --fail http://127.0.0.1:3000/api/health > /tmp/tasteproof-health.json; then
+              break
+            fi
+            sleep 1
+          done
+          if ! grep -q '"qlooKeyConfigured":true' /tmp/tasteproof-health.json; then
+            cat /tmp/tasteproof-next.log
+            echo "::error::Production preview did not report the configured key state."
+            exit 1
+          fi
+      - name: Capture real rendered interface (no sample results)
+        run: npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,1400" --full-page --wait-for-timeout 1500 http://127.0.0.1:3000 public/tasteproof-preview.png
+      - name: Add the generated screenshot to README
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          readme = Path("README.md")
+          text = readme.read_text()
+          marker = "![TasteProof logo](public/logo.svg)\n"
+          image = "\n![TasteProof Test Lab interface](public/tasteproof-preview.png)\n"
+          if "public/tasteproof-preview.png" not in text:
+              if marker not in text:
+                  raise SystemExit("Visual identity section marker not found; refusing to edit README.")
+              text = text.replace(marker, marker + image, 1)
+              readme.write_text(text)
+          screenshot = Path("public/tasteproof-preview.png")
+          if not screenshot.is_file() or screenshot.stat().st_size < 10000:
+              raise SystemExit("Rendered screenshot is missing or implausibly small.")
+          PY
+      - name: Commit generated preview
+        shell: bash
+        run: |
+          git add README.md public/tasteproof-preview.png
+          if git diff --cached --quiet; then
+            echo "Preview screenshot and README are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Add rendered TasteProof interface preview"
+          git push origin HEAD:main
