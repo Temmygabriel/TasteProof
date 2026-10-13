@@ -4,7 +4,7 @@
   "anchors": [
     { "name": "Tyler, the Creator", "type": "artist" },
     { "name": "Aesop", "type": "brand" },
-    { "name": "Dune", "type": "movie" }
+    { "name": "Spirited Away", "type": "movie" }
   ],
   "swapAnchor": { "name": "The Bear", "type": "tv_show" },
   "candidateSource": "Supply three place names taken from an actual recommendation agent's output when running live verification. Do not insert invented or example candidates into this fixture."
