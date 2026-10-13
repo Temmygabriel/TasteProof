@@ -1,4 +1,4 @@
-# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Automatic runs use one coherent Copenhagen place anchor, then baseline-derived candidates.
+# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Automatic smoke runs use the documented Balthazar/New York City Qloo Insights recipe, then baseline-derived candidates.
 name: TasteProof live verification
 
 on:
@@ -40,7 +40,7 @@ jobs:
       QLOO_BASE_URL: ${{ vars.QLOO_BASE_URL }}
       TASTEPROOF_DEMO_CANDIDATES: ${{ inputs.candidates || 'Nimb Hotel, Villa Copenhagen, Hotel d’Angleterre' }}
       TASTEPROOF_BASELINE_SMOKE: ${{ github.event_name == 'push' }}
-      TASTEPROOF_LOCATION: ${{ inputs.location || 'Copenhagen' }}
+      TASTEPROOF_LOCATION: ${{ inputs.location || (github.event_name == 'push' && 'New York City' || 'Copenhagen') }}
       TASTEPROOF_SWAP_ANCHOR: ${{ inputs.swap_anchor || 'The Bear' }}
       TASTEPROOF_SWAP_ANCHOR_TYPE: ${{ inputs.swap_anchor_type || 'tv_show' }}
     steps:
