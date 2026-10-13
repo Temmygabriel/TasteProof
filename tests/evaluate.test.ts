@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { evaluateCandidates, verdictForRank } from "../src/lib/evaluate";
 import { chooseEntity, parseQlooEntities } from "../src/lib/qloo";
 import { InputValidationError, parseTasteTestInput } from "../src/lib/validation";
+import { TestStateMachine } from "../src/lib/test-state";
 
 describe("verdicts based on Qloo's broader affinity baseline", () => {
   it("applies documented top/middle/bottom-third rules to actual provider rank", () => {
@@ -106,9 +107,6 @@ describe("request validation", () => {
     expect(() => parseTasteTestInput({ ...valid, candidates: ["Same", "same"] })).toThrow(InputValidationError);
   });
 });
-
-import { describe, expect, it } from "vitest";
-import { TestStateMachine } from "../src/lib/test-state";
 
 describe("TasteProof execution state machine", () => {
   it("records only actual, legal stages through a partial result", () => {
