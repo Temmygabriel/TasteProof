@@ -5,6 +5,11 @@ on:
   push:
     paths:
       - '.github/workflows/live-verification.yml'
+      - 'src/lib/**'
+      - 'scripts/verify-demo.ts'
+      - 'tests/fixtures/canonical-test.json'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       candidates:
