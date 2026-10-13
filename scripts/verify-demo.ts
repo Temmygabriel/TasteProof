@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { runTasteTest } from "../src/lib/run-test";
-import { chooseEntity, getAffinityBaseline, searchEntities } from "../src/lib/qloo";
 import { ANCHOR_TYPES, type AnchorType, type TasteTestInput, type TasteTestRun, type TasteAnchorInput } from "../src/lib/types";
 
 interface CanonicalFixture {
@@ -46,21 +45,6 @@ async function main() {
   }
 
   let candidateNames = suppliedCandidateNames;
-  if (baselineSmoke) {
-    // For the automatic integration smoke test, use actual entities returned
-    // by Qloo itself. This avoids a false failure when arbitrary example names
-    // do not appear in the taste-ranked baseline.
-    const resolvedAnchors = await Promise.all(fixture.anchors.map(async (anchor) => {
-      const entity = chooseEntity(anchor.name, await searchEntities(anchor.name, anchor.type));
-      if (!entity) throw new Error("Smoke-test anchor did not resolve uniquely: " + anchor.name + " (" + anchor.type + ").");
-      return entity;
-    }));
-    const smokeBaseline = await getAffinityBaseline(resolvedAnchors.map((entity) => entity.entityId), location, 20);
-    if (smokeBaseline.length < 3) throw new Error("Qloo returned fewer than three places for the live smoke-test baseline.");
-    candidateNames = smokeBaseline.slice(0, 3).map((entity) => entity.name);
-    console.log("Automatic smoke test selected three real candidate names from the live Qloo baseline.");
-  }
-
   const firstInput: TasteTestInput = {
     anchors: fixture.anchors,
     candidates: candidateNames,
@@ -80,8 +64,18 @@ async function main() {
     throw error;
   }
   reportRun(first, "Initial live test");
+  if (baselineSmoke && first.rankedCandidateCount < 1 && first.baselineResultCount >= 3) {
+    // Use actual entities from the baseline returned by this successful live
+    // run, then re-run candidate resolution against those real Qloo results.
+    candidateNames = first.baseline.slice(0, 3).map((entity) => entity.name);
+    firstInput.candidates = candidateNames;
+    console.log("Automatic smoke test is retrying with three real names from the returned Qloo baseline.");
+    first = await runTasteTest(firstInput);
+    reportRun(first, "Baseline-derived live test");
+  }
   if (first.rankedCandidateCount < 1 || first.baselineResultCount < 3) {
-    throw new Error("The initial run returned no candidate in a baseline of at least three Qloo results. Live verification failed.");
+    throw new Error("Initial run needs at least one ranked candidate and a baseline of three or more Qloo results; got " +
+      first.rankedCandidateCount + " ranked candidate(s), " + first.baselineResultCount + " baseline result(s).");
   }
 
   const swappedAnchors = firstInput.anchors.map((anchor, index) =>
