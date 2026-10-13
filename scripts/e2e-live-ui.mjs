@@ -65,6 +65,18 @@ try {
     "The UI did not recognize the one-anchor controlled experiment.");
   await assert(await page.locator(".comparison-row").count() === 3,
     "The Anchor Swap comparison did not include all submitted candidates.");
+
+  // Recheck responsive layout with the evidence receipt and comparison present.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileResultsWidth = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth
+  }));
+  await assert(mobileResultsWidth.document <= mobileResultsWidth.viewport + 1,
+    "The mobile results view overflows horizontally: document width " + mobileResultsWidth.document +
+    "px exceeds viewport " + mobileResultsWidth.viewport + "px.");
+  await page.setViewportSize({ width: 1440, height: 1000);
+
   await assert(pageErrors.length === 0,
     "Browser runtime errors occurred: " + pageErrors.join(" | "));
 
@@ -78,6 +90,7 @@ try {
     anchorSwapControlled: true,
     comparisonRows: await page.locator(".comparison-row").count(),
     mobileViewport: mobileWidth,
+    mobileResultsViewport: mobileResultsWidth,
     pageErrors: pageErrors.length
   }));
 } finally {
