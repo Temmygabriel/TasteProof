@@ -1,4 +1,4 @@
-# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Canonical movie anchor updated.
+# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Adds bounded retry after observed Qloo burst rate limiting.
 name: TasteProof live verification
 
 on:

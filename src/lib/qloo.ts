@@ -49,13 +49,19 @@ async function getJson(url: URL, allowNotFound = false): Promise<unknown | null>
   const config = qlooConfig();
   let response: Response;
   try {
-    response = await fetch(url, {
-      method: "GET",
-      headers: { accept: "application/json", "X-Api-Key": config.apiKey },
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(12000)
-    });
+    // Qloo may apply short burst limits to parallel entity lookups. Retry 429s
+    // twice with bounded backoff; never retry authentication or validation errors.
+    for (let attempt = 0; ; attempt += 1) {
+      response = await fetch(url, {
+        method: "GET",
+        headers: { accept: "application/json", "X-Api-Key": config.apiKey },
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(12000)
+      });
+      if (response.status !== 429 || attempt >= 2) break;
+      await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 1200));
+    }
   } catch (error) {
     if (error instanceof DOMException && error.name === "TimeoutError") {
       throw new QlooApiError(504, "Qloo did not respond within 12 seconds. Try the test again.");
