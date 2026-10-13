@@ -8,7 +8,7 @@ type AnchorDraft = { name: string; type: AnchorType };
 const initialAnchors: AnchorDraft[] = [
   { name: "Tyler, the Creator", type: "artist" },
   { name: "Aesop", type: "brand" },
-  { name: "Dune", type: "movie" }
+  { name: "Spirited Away", type: "movie" }
 ];
 const anchorTypeOptions: Array<{ value: AnchorType; label: string }> = [
   { value: "artist", label: "Artist" }, { value: "brand", label: "Brand" },
