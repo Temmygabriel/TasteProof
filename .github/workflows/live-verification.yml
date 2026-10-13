@@ -7,6 +7,7 @@ on:
       - '.github/workflows/live-verification.yml'
       - 'src/lib/**'
       - 'scripts/verify-demo.ts'
+      - 'scripts/verify-multi-anchor.ts'
       - 'tests/fixtures/canonical-test.json'
       - 'package.json'
       - 'package-lock.json'
@@ -66,5 +67,7 @@ jobs:
             echo "::error::Add QLOO_API_KEY under Settings > Secrets and variables > Actions."
             exit 1
           fi
-      - name: Run real test and anchor-swap test
+      - name: Run single-anchor live evaluation and Anchor Swap
         run: npm run verify-demo
+      - name: Run mixed-anchor live evaluation and Anchor Swap
+        run: npm run verify-multi-anchor
