@@ -56,6 +56,7 @@ try {
 
   // Change exactly one anchor and submit through the real browser UI again.
   await page.getByRole("textbox", { name: "Taste anchor 3" }).fill("Frank Ocean");
+  await page.getByLabel("Category for taste anchor 3").selectOption("artist");
   await page.getByRole("button", { name: /Rerun taste test/ }).click();
   await page.locator(".comparison-section").waitFor({ state: "visible", timeout: 90000 });
   const controlledSwap = page.locator(".anchor-change-report.controlled");
