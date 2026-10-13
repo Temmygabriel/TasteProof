@@ -53,9 +53,9 @@ Do not create a NEXT_PUBLIC_QLOO_API_KEY variable. Do not put credentials in URL
 
 ## Cloud checks
 
-GitHub Actions runs TypeScript checks, unit tests and the production build on hosted runners, avoiding heavy local builds. These checks do not need the Qloo secret. If `package-lock.json` is missing, **Bootstrap lockfile and verify app** runs on app-source pushes (or can be started manually). It generates the lockfile on a GitHub runner, runs typecheck, tests and production build, and commits the lockfile only after those checks pass.
+GitHub Actions runs TypeScript checks, unit tests and the production build on hosted runners, avoiding heavy local builds. These checks do not need the Qloo secret. A separate live-verification workflow calls Qloo and checks both a single-anchor test and a mixed-category three-anchor test, including an Anchor Swap for each. The automatic smoke checks use actual Qloo baseline entities as test candidates; they do not fabricate ranking evidence. The UI screenshot workflow builds the production app, verifies the health/configuration response, captures the rendered interface, and keeps a preview in the repository.
 
-For live verification, add the repository Action secret QLOO_API_KEY and then use Actions → TasteProof live verification → Run workflow. Supply three candidate names that came from an actual agent output. The workflow runs Qloo twice, changing the third taste anchor for the second run. No dramatic change is assumed or forced.
+For a manual live verification, add the repository Action secret QLOO_API_KEY and use Actions → TasteProof live verification → Run workflow. Supply exactly three candidate names copied from an actual external-agent output, choose the location, and choose the replacement anchor for the second run. The manual path tests those submitted candidates against live Qloo results. No dramatic change is assumed or forced.
 
 ## Endpoints
 
