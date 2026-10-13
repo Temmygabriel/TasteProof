@@ -35,7 +35,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Generate npm lockfile on GitHub runner
+      - name: Pin npm with the peer-resolver fix
+        run: npm install --global npm@11.19.1
+      - name: Generate npm lockfile on GitHub runner using the pinned npm version
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install reproducibly from generated lockfile
         run: npm ci --no-audit --no-fund

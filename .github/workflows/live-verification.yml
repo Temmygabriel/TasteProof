@@ -45,8 +45,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Pin npm with the peer-resolver fix
+        run: npm install --global npm@11.19.1
       - name: Install dependencies in GitHub Actions
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Require the Qloo secret without printing it
         shell: bash
         run: |
