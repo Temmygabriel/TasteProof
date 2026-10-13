@@ -50,7 +50,7 @@ try {
   await assert(firstRows === 3, "The live evaluation did not render all three submitted candidates.");
   await assert(firstBaseline.includes("20 entities") || firstBaseline.includes("entities"),
     "The evidence receipt did not expose the actual Qloo baseline.");
-  const rankedCount = Number.parseInt(firstReceipt.match(/^(\\d+)/)?.[1] ?? "0", 10);
+  const rankedCount = Number.parseInt(firstReceipt.match(/^(\d+)/)?.[1] ?? "0", 10);
   await assert(rankedCount >= 1,
     "The first live evaluation produced no ranked candidates: " + firstReceipt);
 
