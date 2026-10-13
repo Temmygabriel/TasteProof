@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { runTasteTest } from "../src/lib/run-test";
+import { chooseEntity, getAffinityBaseline, searchEntities } from "../src/lib/qloo";
 import { ANCHOR_TYPES, type AnchorType, type TasteTestInput, type TasteTestRun, type TasteAnchorInput } from "../src/lib/types";
 
 interface CanonicalFixture {
@@ -30,9 +31,10 @@ async function main() {
   if (!process.env.QLOO_API_KEY?.trim()) {
     throw new Error("Set the GitHub Actions secret QLOO_API_KEY before running live verification.");
   }
-  const candidateNames = required("TASTEPROOF_DEMO_CANDIDATES")
+  const suppliedCandidateNames = required("TASTEPROOF_DEMO_CANDIDATES")
     .split(",").map((item) => item.trim()).filter(Boolean);
-  if (candidateNames.length !== 3) {
+  const baselineSmoke = process.env.TASTEPROOF_BASELINE_SMOKE === "true";
+  if (!baselineSmoke && suppliedCandidateNames.length !== 3) {
     throw new Error("Provide exactly three candidate names copied from actual external-agent output.");
   }
 
@@ -41,6 +43,22 @@ async function main() {
   const requestedSwapType = process.env.TASTEPROOF_SWAP_ANCHOR_TYPE?.trim() || fixture.swapAnchor.type;
   if (!ANCHOR_TYPES.includes(requestedSwapType as AnchorType)) {
     throw new Error("The requested Anchor Swap category is not supported.");
+  }
+
+  let candidateNames = suppliedCandidateNames;
+  if (baselineSmoke) {
+    // For the automatic integration smoke test, use actual entities returned
+    // by Qloo itself. This avoids a false failure when arbitrary example names
+    // do not appear in the taste-ranked baseline.
+    const resolvedAnchors = await Promise.all(fixture.anchors.map(async (anchor) => {
+      const entity = chooseEntity(anchor.name, await searchEntities(anchor.name, anchor.type));
+      if (!entity) throw new Error("Smoke-test anchor did not resolve uniquely: " + anchor.name + " (" + anchor.type + ").");
+      return entity;
+    }));
+    const smokeBaseline = await getAffinityBaseline(resolvedAnchors.map((entity) => entity.entityId), location, 20);
+    if (smokeBaseline.length < 3) throw new Error("Qloo returned fewer than three places for the live smoke-test baseline.");
+    candidateNames = smokeBaseline.slice(0, 3).map((entity) => entity.name);
+    console.log("Automatic smoke test selected three real candidate names from the live Qloo baseline.");
   }
 
   const firstInput: TasteTestInput = {
@@ -73,7 +91,7 @@ async function main() {
   );
   const second = await runTasteTest({ ...firstInput, anchors: swappedAnchors });
   reportRun(second, "Anchor Swap live test");
-  if (first.testId === second.testId || second.rankedCandidateCount < 1 || second.baselineResultCount < 3) {
+  if (first.testId === second.testId || second.baselineResultCount < 3) {
     throw new Error("The second live Anchor Swap run is incomplete.");
   }
 

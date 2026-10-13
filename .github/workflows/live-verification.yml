@@ -1,4 +1,4 @@
-# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Adds bounded retry after observed Qloo burst rate limiting.
+# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Automatic runs use real Qloo baseline entities; manual runs use external-agent candidates.
 name: TasteProof live verification
 
 on:
@@ -39,6 +39,7 @@ jobs:
       QLOO_API_KEY: ${{ secrets.QLOO_API_KEY }}
       QLOO_BASE_URL: ${{ vars.QLOO_BASE_URL }}
       TASTEPROOF_DEMO_CANDIDATES: ${{ inputs.candidates || 'Nimb Hotel, Villa Copenhagen, Hotel d’Angleterre' }}
+      TASTEPROOF_BASELINE_SMOKE: ${{ github.event_name == 'push' }}
       TASTEPROOF_LOCATION: ${{ inputs.location || 'Copenhagen' }}
       TASTEPROOF_SWAP_ANCHOR: ${{ inputs.swap_anchor || 'The Bear' }}
       TASTEPROOF_SWAP_ANCHOR_TYPE: ${{ inputs.swap_anchor_type || 'tv_show' }}
