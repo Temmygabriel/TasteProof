@@ -1,4 +1,4 @@
-# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Automatic runs fall back to real names from the initial Qloo baseline if sample names do not rank.
+# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Automatic runs use one coherent Copenhagen place anchor, then baseline-derived candidates.
 name: TasteProof live verification
 
 on:

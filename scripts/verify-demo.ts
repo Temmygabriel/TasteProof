@@ -45,8 +45,11 @@ async function main() {
   }
 
   let candidateNames = suppliedCandidateNames;
+  const testAnchors: TasteAnchorInput[] = baselineSmoke
+    ? [{ name: "Noma", type: "place" }]
+    : fixture.anchors;
   const firstInput: TasteTestInput = {
-    anchors: fixture.anchors,
+    anchors: testAnchors,
     candidates: candidateNames,
     task: fixture.taskTemplate.replaceAll("{location}", location),
     location
