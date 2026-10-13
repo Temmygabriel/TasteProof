@@ -38,9 +38,9 @@ try {
   await page.getByRole("textbox", { name: "Taste anchor 3" }).fill("Spirited Away");
   await page.locator("#location").fill("New York City");
   await page.locator("#task").fill("Check an agent's place recommendations for New York City.");
-  await page.getByLabel("Recommendation candidate 1").fill("One Times Square");
-  await page.getByLabel("Recommendation candidate 2").fill("Brooklyn Bridge");
-  await page.getByLabel("Recommendation candidate 3").fill("Mood Fabrics");
+  await page.getByRole("textbox", { name: "Recommendation candidate 1" }).fill("One Times Square");
+  await page.getByRole("textbox", { name: "Recommendation candidate 2" }).fill("Brooklyn Bridge");
+  await page.getByRole("textbox", { name: "Recommendation candidate 3" }).fill("Mood Fabrics");
 
   await page.getByRole("button", { name: /Run taste test/ }).click();
   await page.locator(".receipt-title h3").waitFor({ state: "visible", timeout: 90000 });
