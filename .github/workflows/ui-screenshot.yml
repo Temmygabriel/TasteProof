@@ -68,6 +68,10 @@ jobs:
           fi
       - name: Capture real rendered interface (no sample results)
         run: npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,1400" --full-page --wait-for-timeout 1500 http://127.0.0.1:3000 public/tasteproof-preview.png
+      - name: Rebase preview capture onto the latest main branch
+        run: |
+          git fetch origin main
+          git rebase origin/main
       - name: Add the generated screenshot to README
         shell: bash
         run: |
