@@ -4,6 +4,24 @@ import { chooseEntity, searchEntities, getAffinityBaseline, type QlooEntity } fr
 import type { TasteTestInput, TasteTestRun, AnchorType } from "./types";
 import { TestStateMachine, type StateSnapshot } from "./test-state";
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, concurrency), items.length);
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index]);
+    }
+  }));
+  return results;
+}
+
 export class AnchorResolutionError extends Error {
   readonly unresolvedAnchors: Array<{ name: string; type: AnchorType; candidatesFound: number }>;
   readonly trace: StateSnapshot;
@@ -32,10 +50,12 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
   const machine = new TestStateMachine();
   machine.transition("CONFIGURED");
   machine.transition("RESOLVING_TASTE");
-  const anchorMatches = await Promise.all(input.anchors.map(async (anchor) => ({
+  // Qloo can apply short burst limits. Keep a small concurrency cap instead
+  // of firing every anchor lookup at once.
+  const anchorMatches = await mapWithConcurrency(input.anchors, 2, async (anchor) => ({
     anchor,
     ...resolveOne(anchor.name, await searchEntities(anchor.name, anchor.type))
-  })));
+  }));
 
   const unresolvedAnchors = anchorMatches.filter((match) => !match.entity).map((match) => ({
     name: match.anchor.name,
@@ -62,10 +82,10 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
   }
 
   machine.transition("RESOLVING_CANDIDATES");
-  const candidateMatches = await Promise.all(input.candidates.map(async (name) => ({
+  const candidateMatches = await mapWithConcurrency(input.candidates, 2, async (name) => ({
     inputName: name,
     ...resolveOne(name, await searchEntities(name, "place"))
-  })));
+  }));
 
   machine.transition("EVALUATING");
   const baseline = await getAffinityBaseline(anchors.map((anchor) => anchor.entityId), input.location, 20);
