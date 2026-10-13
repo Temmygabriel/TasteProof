@@ -10,7 +10,7 @@ on:
       - 'package.json'
       - 'next.config.ts'
       - 'tsconfig.json'
-      - 'vitest.config.ts'
+      - 'vitest.config.mts'
       - '.github/workflows/ci.yml'
       - '.github/workflows/lockfile-bootstrap.yml'
   workflow_dispatch:
