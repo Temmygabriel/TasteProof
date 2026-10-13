@@ -46,7 +46,7 @@ async function main() {
 
   let candidateNames = suppliedCandidateNames;
   const testAnchors: TasteAnchorInput[] = baselineSmoke
-    ? [{ name: "Balthazar", type: "place" }]
+    ? [{ name: "Tyler, the Creator", type: "artist" }]
     : fixture.anchors;
   const firstInput: TasteTestInput = {
     anchors: testAnchors,

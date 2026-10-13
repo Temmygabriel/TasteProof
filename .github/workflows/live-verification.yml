@@ -1,4 +1,4 @@
-# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Automatic smoke runs use the documented Balthazar/New York City Qloo Insights recipe, then baseline-derived candidates.
+# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes. Automatic smoke runs use a uniquely resolvable artist anchor and baseline-derived candidates.
 name: TasteProof live verification
 
 on:
