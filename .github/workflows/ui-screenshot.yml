@@ -31,7 +31,7 @@ jobs:
       QLOO_BASE_URL: ${{ vars.QLOO_BASE_URL }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Start from the latest main snapshot
         run: |
           git fetch origin main
