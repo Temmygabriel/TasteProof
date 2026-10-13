@@ -51,7 +51,7 @@ jobs:
       TASTEPROOF_SWAP_ANCHOR_TYPE: ${{ inputs.swap_anchor_type || (github.event_name == 'push' && 'artist' || 'tv_show') }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
