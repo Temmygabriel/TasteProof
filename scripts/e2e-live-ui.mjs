@@ -75,7 +75,7 @@ try {
   await assert(mobileResultsWidth.document <= mobileResultsWidth.viewport + 1,
     "The mobile results view overflows horizontally: document width " + mobileResultsWidth.document +
     "px exceeds viewport " + mobileResultsWidth.viewport + "px.");
-  await page.setViewportSize({ width: 1440, height: 1000);
+  await page.setViewportSize({ width: 1440, height: 1000 });
 
   await assert(pageErrors.length === 0,
     "Browser runtime errors occurred: " + pageErrors.join(" | "));
