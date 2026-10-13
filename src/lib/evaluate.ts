@@ -33,10 +33,10 @@ export function evaluateCandidates(
     // baseline contains exactly one entity with that exact normalized name,
     // that provides contextual disambiguation without guessing between search
     // results. If the baseline also contains duplicates, keep it unresolved.
-    const normalizedInput = item.inputName.normalize("NFKC").trim().toLocaleLowerCase().replace(/\\s+/g, " ");
+    const normalizedInput = item.inputName.normalize("NFKC").trim().toLocaleLowerCase().replace(/\s+/g, " ");
     const exactBaselineMatches = item.resolution === "ambiguous" && !item.entity
       ? baseline.filter((entity) =>
-          entity.name.normalize("NFKC").trim().toLocaleLowerCase().replace(/\\s+/g, " ") === normalizedInput
+          entity.name.normalize("NFKC").trim().toLocaleLowerCase().replace(/\s+/g, " ") === normalizedInput
         )
       : [];
     const uniqueBaselineMatches = Array.from(
