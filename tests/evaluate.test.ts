@@ -61,7 +61,7 @@ describe("verdicts based on Qloo's broader affinity baseline", () => {
     expect(result.candidates[0].resolution).toBe("resolved");
     expect(result.candidates[0].entityId).toBe("place-a");
     expect(result.candidates[0].qlooRank).toBe(2);
-    expect(result.candidates[0].verdict).toBe("PASS");
+    expect(result.candidates[0].verdict).toBe("REVIEW");
     expect(result.candidates[0].evidence).toContain("location-filtered baseline contained one exact-name entity");
   });
 
