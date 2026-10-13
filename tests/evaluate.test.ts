@@ -49,6 +49,35 @@ describe("verdicts based on Qloo's broader affinity baseline", () => {
     expect(result.rankedCandidateCount).toBe(0);
   });
 
+  it("uses a unique exact-name entity in the location-filtered baseline to disambiguate search duplicates", () => {
+    const baseline = [
+      { entityId: "place-a", name: "Brooklyn Bridge", subtype: "urn:entity:place", rank: 2 },
+      { entityId: "place-b", name: "One Times Square", subtype: "urn:entity:place", rank: 1 },
+      { entityId: "place-c", name: "Mood Fabrics", subtype: "urn:entity:place", rank: 3 }
+    ];
+    const result = evaluateCandidates([
+      { inputName: "Brooklyn Bridge", entity: null, resolution: "ambiguous" }
+    ], baseline);
+    expect(result.candidates[0].resolution).toBe("resolved");
+    expect(result.candidates[0].entityId).toBe("place-a");
+    expect(result.candidates[0].qlooRank).toBe(2);
+    expect(result.candidates[0].verdict).toBe("PASS");
+    expect(result.candidates[0].evidence).toContain("location-filtered baseline contained one exact-name entity");
+  });
+
+  it("keeps a duplicate name unresolved when the baseline itself has multiple exact-name entities", () => {
+    const result = evaluateCandidates([
+      { inputName: "Central Park", entity: null, resolution: "ambiguous" }
+    ], [
+      { entityId: "park-a", name: "Central Park", subtype: "urn:entity:place", rank: 1 },
+      { entityId: "park-b", name: "Central Park", subtype: "urn:entity:place", rank: 2 },
+      { entityId: "place-c", name: "Mood Fabrics", subtype: "urn:entity:place", rank: 3 }
+    ]);
+    expect(result.candidates[0].resolution).toBe("ambiguous");
+    expect(result.candidates[0].verdict).toBe("UNRESOLVED");
+    expect(result.candidates[0].entityId).toBeNull();
+  });
+
   it("does not count one resolved entity twice", () => {
     const shared = { entityId: "same", name: "Hotel Alpha", subtype: "urn:entity:place", rank: 1 };
     const result = evaluateCandidates([
