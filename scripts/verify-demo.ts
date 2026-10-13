@@ -22,8 +22,16 @@ function required(name: string): string {
 
 function reportRun(run: TasteTestRun, label: string) {
   const unresolved = run.candidates.filter((candidate) => candidate.verdict === "UNRESOLVED").length;
-  console.log(label + ": " + run.rankedCandidateCount + " candidates with Qloo ranking evidence; " +
-    unresolved + " candidate(s) unresolved.");
+  console.log(label + ": " + run.rankedCandidateCount + "/" + run.candidates.length +
+    " candidates with Qloo ranking evidence; " + unresolved + " unresolved; baseline=" +
+    run.baselineResultCount + ".");
+  console.log(label + " baseline sample: " +
+    run.baseline.slice(0, 10).map((entity) => entity.name + " [rank " + entity.rank + "]").join(" | "));
+  for (const candidate of run.candidates) {
+    console.log("  candidate: " + candidate.inputName + " => " +
+      (candidate.resolvedName ?? "unresolved") + "; resolution=" + candidate.resolution +
+      "; rank=" + (candidate.qlooRank ?? "none") + "; verdict=" + candidate.verdict);
+  }
 }
 
 async function main() {
@@ -67,12 +75,14 @@ async function main() {
     throw error;
   }
   reportRun(first, "Initial live test");
-  if (baselineSmoke && first.rankedCandidateCount < 1 && first.baselineResultCount >= 3) {
-    // Use actual entities from the baseline returned by this successful live
-    // run, then re-run candidate resolution against those real Qloo results.
-    candidateNames = first.baseline.slice(0, 3).map((entity) => entity.name);
+  if (baselineSmoke && first.baselineResultCount >= 3) {
+    // A smoke test must exercise candidate resolution against actual provider
+    // entities, not arbitrary hotel names that may be absent from the baseline.
+    // Use up to ten real baseline names (the product's supported maximum).
+    candidateNames = first.baseline.slice(0, 10).map((entity) => entity.name);
     firstInput.candidates = candidateNames;
-    console.log("Automatic smoke test is retrying with three real names from the returned Qloo baseline.");
+    console.log("Smoke test is evaluating " + candidateNames.length +
+      " real candidate names from the initial Qloo baseline.");
     first = await runTasteTest(firstInput);
     reportRun(first, "Baseline-derived live test");
   }
@@ -90,6 +100,9 @@ async function main() {
   reportRun(second, "Anchor Swap live test");
   if (first.testId === second.testId || second.baselineResultCount < 3) {
     throw new Error("The second live Anchor Swap run is incomplete.");
+  }
+  if (second.rankedCandidateCount < 1) {
+    throw new Error("Anchor Swap returned no candidates with ranking evidence. The workflow must not mark a zero-evidence comparison as a successful end-to-end test.");
   }
 
   const comparisons = first.candidates.map((oldCandidate) => {
@@ -110,6 +123,8 @@ async function main() {
     verified: true,
     mode: "qloo-live",
     runs: 2,
+    baselineResultCounts: [first.baselineResultCount, second.baselineResultCount],
+    candidateCount: first.candidates.length,
     rankedCandidates: [first.rankedCandidateCount, second.rankedCandidateCount],
     unresolvedCandidates: [
       first.candidates.filter((candidate) => candidate.verdict === "UNRESOLVED").length,
