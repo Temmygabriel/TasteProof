@@ -11,7 +11,7 @@ async function assert(condition, message) {
 }
 
 try {
-  const response = await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 30000 });
+  const response = await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
   await assert(response?.ok(), "The TasteProof home page did not load successfully.");
 
   const healthResponse = await page.request.get(baseUrl + "/api/health");
@@ -50,8 +50,9 @@ try {
   await assert(firstRows === 3, "The live evaluation did not render all three submitted candidates.");
   await assert(firstBaseline.includes("20 entities") || firstBaseline.includes("entities"),
     "The evidence receipt did not expose the actual Qloo baseline.");
-  await assert(!firstReceipt.includes("0 submitted candidates"),
-    "The first live evaluation produced no ranked candidates.");
+  const rankedCount = Number.parseInt(firstReceipt.match(/^(\\d+)/)?.[1] ?? "0", 10);
+  await assert(rankedCount >= 1,
+    "The first live evaluation produced no ranked candidates: " + firstReceipt);
 
   // Change exactly one anchor and submit through the real browser UI again.
   await page.getByLabel("Taste anchor 3").fill("Frank Ocean");
