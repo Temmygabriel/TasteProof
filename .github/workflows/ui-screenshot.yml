@@ -9,6 +9,7 @@ on:
       - 'src/app/layout.tsx'
       - 'public/logo.svg'
       - 'public/favicon.svg'
+      - 'scripts/e2e-live-ui.mjs'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/ui-screenshot.yml'
@@ -48,6 +49,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Build production app
         run: npm run build
+      - name: Install Playwright runner without changing the project lockfile
+        run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.56.1
       - name: Install Chromium in the hosted runner
         run: npx --yes playwright@1.56.1 install --with-deps chromium
       - name: Start production server and verify configuration badge
@@ -68,12 +71,16 @@ jobs:
           fi
       - name: Capture real rendered interface (no sample results)
         run: npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,1400" --full-page --wait-for-timeout 1500 http://127.0.0.1:3000 public/tasteproof-preview.png
+      - name: Run browser-level live evaluation, Anchor Swap and mobile layout checks
+        run: node scripts/e2e-live-ui.mjs
       - name: Rebase preview capture onto the latest main branch
         run: |
           mv public/tasteproof-preview.png /tmp/tasteproof-preview.png
+          mv public/tasteproof-mobile-preview.png /tmp/tasteproof-mobile-preview.png
           git fetch origin main
           git rebase origin/main
           mv /tmp/tasteproof-preview.png public/tasteproof-preview.png
+          mv /tmp/tasteproof-mobile-preview.png public/tasteproof-mobile-preview.png
       - name: Add the generated screenshot to README
         shell: bash
         run: |
@@ -87,15 +94,22 @@ jobs:
               if marker not in text:
                   raise SystemExit("Visual identity section marker not found; refusing to edit README.")
               text = text.replace(marker, marker + image, 1)
-              readme.write_text(text)
-          screenshot = Path("public/tasteproof-preview.png")
-          if not screenshot.is_file() or screenshot.stat().st_size < 10000:
-              raise SystemExit("Rendered screenshot is missing or implausibly small.")
+          mobile_image = "\n![TasteProof mobile interface](public/tasteproof-mobile-preview.png)\n"
+          if "public/tasteproof-mobile-preview.png" not in text:
+              desktop_marker = "![TasteProof Test Lab interface](public/tasteproof-preview.png)\n"
+              if desktop_marker not in text:
+                  raise SystemExit("Desktop preview marker not found; refusing to edit README.")
+              text = text.replace(desktop_marker, desktop_marker + mobile_image, 1)
+          readme.write_text(text)
+          for name in ["public/tasteproof-preview.png", "public/tasteproof-mobile-preview.png"]:
+              screenshot = Path(name)
+              if not screenshot.is_file() or screenshot.stat().st_size < 10000:
+                  raise SystemExit(f"Rendered screenshot {name} is missing or implausibly small.")
           PY
       - name: Commit generated preview
         shell: bash
         run: |
-          git add README.md public/tasteproof-preview.png
+          git add README.md public/tasteproof-preview.png public/tasteproof-mobile-preview.png
           if git diff --cached --quiet; then
             echo "Preview screenshot and README are already current."
             exit 0
