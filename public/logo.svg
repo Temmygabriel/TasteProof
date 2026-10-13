@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="248" height="48" viewBox="0 0 248 48">
+  <rect x="2" y="4" width="40" height="40" fill="#c34d35"/>
+  <circle cx="22" cy="24" r="11" fill="none" stroke="#fffefa" stroke-width="2"/>
+  <circle cx="22" cy="24" r="4" fill="#fffefa"/>
+  <path d="M22 8v5M22 35v5M6 24h5M33 24h5" stroke="#fffefa" stroke-width="1.6" stroke-linecap="square"/>
+  <text x="53" y="31" fill="#20231f" font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif" font-size="25" font-weight="600" letter-spacing="-1">TasteProof</text>
+</svg>

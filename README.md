@@ -6,10 +6,16 @@ TasteProof tests whether recommendations from an external AI agent fit the taste
 
 TasteProof is not a recommendation generator. It tests recommendations an agent already produced.
 
+## Visual identity
+
+![TasteProof logo](public/logo.svg)
+
+The interface follows the **Test Lab** direction: warm paper, editorial typography, specimen labels, a central Taste Test Card, and inspectable result evidence.
+
 ## Product flow
 
-1. Enter two to five taste anchors and choose a Qloo category for each.
-2. Paste two to ten recommendations from the agent being tested.
+1. Enter one to five taste anchors and choose a Qloo category for each.
+2. Paste one to ten recommendations from the agent being tested.
 3. TasteProof resolves the anchors and candidate places using Qloo.
 4. TasteProof requests a broader set of up to 20 places from Qloo Insights, sorted by affinity for the supplied taste anchors and location.
 5. It assigns PASS, REVIEW, FAIL or UNRESOLVED using a published relative-ranking rule.
@@ -45,7 +51,7 @@ Do not create a NEXT_PUBLIC_QLOO_API_KEY variable. Do not put credentials in URL
 
 ## Cloud checks
 
-GitHub Actions runs TypeScript checks, unit tests and the production build on hosted runners, avoiding heavy local builds. These checks do not need the Qloo secret. The repository's first lockfile can be generated without installing packages locally: open Actions → **Bootstrap lockfile and verify app** → **Run workflow** once. That workflow generates `package-lock.json` on a GitHub runner, runs the typecheck, tests and production build, then commits the lockfile to the default branch.
+GitHub Actions runs TypeScript checks, unit tests and the production build on hosted runners, avoiding heavy local builds. These checks do not need the Qloo secret. If `package-lock.json` is missing, **Bootstrap lockfile and verify app** runs on app-source pushes (or can be started manually). It generates the lockfile on a GitHub runner, runs typecheck, tests and production build, and commits the lockfile only after those checks pass.
 
 For live verification, add the repository Action secret QLOO_API_KEY and then use Actions → TasteProof live verification → Run workflow. Supply three candidate names that came from an actual agent output. The workflow runs Qloo twice, changing the third taste anchor for the second run. No dramatic change is assumed or forced.
 
@@ -61,7 +67,7 @@ The Qloo lookup routes use a best-effort per-process rate limit. This helps agai
 
 ## Technical honesty and limitations
 
-The verdict is comparative: the top third of ranked candidates receives PASS, the middle third REVIEW, and the bottom third FAIL. If fewer than two candidates have usable evidence, TasteProof returns UNRESOLVED. These are not probabilities, psychological claims or guarantees that a person will like an item. The project never invents numeric affinity scores.
+The verdict is comparative: the top third of the returned affinity-ranked place baseline receives PASS, the middle third REVIEW, and the bottom third FAIL. A candidate that does not appear in that baseline, or any baseline with fewer than three entities, remains UNRESOLVED. The overall run is UNRESOLVED when no submitted candidate has enough ranking evidence; mixed evidence is marked PARTIAL_RESULT. These are not probabilities, psychological claims or guarantees that a person will like an item. The project never invents numeric affinity scores.
 
 Candidate matching depends on Qloo resolving submitted place names and returning them in the broader Insights baseline. A successful website build alone does not prove the live Qloo workflow works; the live verification run is a separate gate.
 

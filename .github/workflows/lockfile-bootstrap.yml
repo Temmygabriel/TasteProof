@@ -1,6 +1,18 @@
 name: Bootstrap lockfile and verify app
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'next.config.ts'
+      - 'tsconfig.json'
+      - 'vitest.config.ts'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/lockfile-bootstrap.yml'
   workflow_dispatch:
 
 permissions:

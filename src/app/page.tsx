@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import type { AnchorType, TasteTestRun, Verdict } from "../lib/types";
+import { compareAnchorChanges } from "../lib/anchor-change";
 
 type AnchorDraft = { name: string; type: AnchorType };
 const initialAnchors: AnchorDraft[] = [
@@ -108,11 +109,23 @@ export default function HomePage() {
 
   const comparison = previousRun && result ? compareRuns(previousRun, result) : [];
   const changed = comparison.some((item) => item.changed);
+  const anchorChanges = previousRun && result ? compareAnchorChanges(previousRun.anchors, result.anchors) : [];
+  const sameCandidateInputs = Boolean(previousRun && result &&
+    previousRun.candidates.map((item) => item.inputName).join("\u0000") ===
+    result.candidates.map((item) => item.inputName).join("\u0000"));
+  const sameNonAnchorInputs = Boolean(previousRun && result &&
+    previousRun.task === result.task &&
+    previousRun.location === result.location &&
+    sameCandidateInputs);
+  const controlledSwap = Boolean(previousRun && result &&
+    anchorChanges.length === 1 &&
+    previousRun.anchors.length === result.anchors.length &&
+    sameNonAnchorInputs);
 
   return (
     <div className="site-shell">
       <header className="topbar">
-        <a className="wordmark" href="/" aria-label="TasteProof home"><span className="brand-mark"><span /></span><span>TasteProof</span></a>
+        <a className="wordmark" href="/" aria-label="TasteProof home"><img className="logo-lockup" src="/logo.svg" alt="" /></a>
         <div className="topbar-center"><span>TP / 01</span><span>RECOMMENDATION QA</span></div>
         <div className="connection"><span className={"connection-dot " + (qlooConfigured ? "ready" : "")} />{qlooConfigured === null ? "CHECKING QLOO" : qlooConfigured ? "KEY CONFIGURED" : "QLOO NOT CONFIGURED"}</div>
       </header>
@@ -247,15 +260,33 @@ export default function HomePage() {
         </section>
 
         {previousRun && result ? <section className="comparison-section">
-          <div className="section-head"><div><small>03 / EXPERIMENT</small><h2>Anchor Swap comparison</h2></div><span className="meta-chip">{changed ? "CHANGE OBSERVED" : "NO CHANGE OBSERVED"}</span></div>
+          <div className="section-head"><div><small>03 / EXPERIMENT</small><h2>Anchor Swap comparison</h2></div><span className="meta-chip">{controlledSwap ? "ONE ANCHOR CHANGED" : anchorChanges.length === 0 ? "NO ANCHOR CHANGE" : anchorChanges.length + " ANCHOR CHANGE" + (anchorChanges.length === 1 ? "" : "S")}</span></div>
           <p className="comparison-intro">Previous run {previousRun.testId.slice(0, 8).toUpperCase()} compared with the new live run {result.testId.slice(0, 8).toUpperCase()}. Only changes in the two actual results are shown.</p>
+          <div className={"anchor-change-report" + (controlledSwap ? " controlled" : "")} aria-live="polite">
+            <div className="anchor-change-summary">
+              <small>{controlledSwap ? "CONTROLLED EXPERIMENT" : anchorChanges.length === 0 ? "NO CONTEXT CHANGE" : "CONTEXT DELTA"}</small>
+              <strong>{controlledSwap ? "One taste variable changed" : anchorChanges.length === 0 ? "No resolved anchor changed" : anchorChanges.length + " resolved anchor change" + (anchorChanges.length === 1 ? "" : "s")}</strong>
+            </div>
+            <div className="anchor-change-list">
+              {anchorChanges.length ? anchorChanges.map((change) => <div className="anchor-change-row" key={change.index}>
+                <small>ANCHOR {String(change.index + 1).padStart(2, "0")}</small>
+                <span>{change.previous?.resolvedName || "Added anchor"}</span>
+                <b aria-hidden="true">→</b>
+                <span>{change.current?.resolvedName || "Removed anchor"}</span>
+              </div>) : <p className="rail-note">The resolved taste-anchor set is the same in both runs.</p>}
+            </div>
+          </div>
+          {!controlledSwap ? <p className="swap-integrity-note">{anchorChanges.length === 0
+            ? "No taste anchor was replaced, so this is a rerun comparison rather than a controlled Anchor Swap."
+            : "For a controlled one-variable experiment, change exactly one resolved taste anchor and keep the task, location, candidate list, and anchor count unchanged."}</p>
+          : <p className="swap-integrity-note">The resolved Qloo entity changed at one anchor; the task, location, candidate list, and remaining anchor IDs stayed the same.</p>}
           <div className="comparison-table"><div className="comparison-head"><span>CANDIDATE</span><span>PREVIOUS</span><span>CURRENT</span><span>OBSERVATION</span></div>
             {comparison.map((item) => <div className="comparison-row" key={item.candidate}><strong>{item.candidate}</strong><span>{item.previousRank ? "#" + item.previousRank + " · " + item.previousVerdict : "No prior matched result"}</span><span>{item.currentRank ? "#" + item.currentRank + " · " + item.currentVerdict : "No usable rank"}</span><span className={item.changed ? "change" : ""}>{item.changed ? "Changed" : "No observed change"}</span></div>)}
           </div>
           {!changed ? <p className="rail-note">No observed change in this run. TasteProof does not force a dramatic result.</p> : null}
         </section> : null}
       </main>
-      <footer className="footer"><div><span className="brand-mark"><span /></span><strong>TasteProof</strong></div><p>A taste QA layer for AI agents.</p><nav><a href="https://qloo.devpost.com/" target="_blank" rel="noreferrer">Qloo Agentic Hackathon ↗</a><a href="https://docs.qloo.com/reference/api-overview" target="_blank" rel="noreferrer">Qloo API docs ↗</a></nav></footer>
+      <footer className="footer"><div><img className="logo-lockup" src="/logo.svg" alt="TasteProof" /></div><p>A taste QA layer for AI agents.</p><nav><a href="https://qloo.devpost.com/" target="_blank" rel="noreferrer">Qloo Agentic Hackathon ↗</a><a href="https://docs.qloo.com/reference/api-overview" target="_blank" rel="noreferrer">Qloo API docs ↗</a></nav></footer>
     </div>
   );
 }
