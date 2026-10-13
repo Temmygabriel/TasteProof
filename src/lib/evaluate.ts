@@ -28,7 +28,24 @@ export function evaluateCandidates(
   const rankedIds = new Set<string>();
 
   const candidates = inputs.map((item): CandidateResult => {
-    if (!item.entity) {
+    // A candidate name can have multiple exact Qloo search matches (for
+    // example, similarly named places). If the location-filtered Insights
+    // baseline contains exactly one entity with that exact normalized name,
+    // that provides contextual disambiguation without guessing between search
+    // results. If the baseline also contains duplicates, keep it unresolved.
+    const normalizedInput = item.inputName.normalize("NFKC").trim().toLocaleLowerCase().replace(/\\s+/g, " ");
+    const exactBaselineMatches = item.resolution === "ambiguous" && !item.entity
+      ? baseline.filter((entity) =>
+          entity.name.normalize("NFKC").trim().toLocaleLowerCase().replace(/\\s+/g, " ") === normalizedInput
+        )
+      : [];
+    const uniqueBaselineMatches = Array.from(
+      new Map(exactBaselineMatches.map((entity) => [entity.entityId.toUpperCase(), entity])).values()
+    );
+    const baselineDisambiguated = uniqueBaselineMatches.length === 1 ? uniqueBaselineMatches[0] : null;
+    const entity = item.entity ?? baselineDisambiguated;
+
+    if (!entity) {
       return {
         inputName: item.inputName,
         resolvedName: null,
@@ -38,18 +55,18 @@ export function evaluateCandidates(
         qlooRank: null,
         verdict: "UNRESOLVED",
         evidence: item.resolution === "ambiguous"
-          ? "Qloo returned multiple possible matches. Use a more precise name; no verdict was assigned."
+          ? "Qloo returned multiple exact-name matches, and the location-filtered baseline did not uniquely disambiguate them. Use a more precise name; no verdict was assigned."
           : "Qloo did not resolve this candidate. No verdict was assigned."
       };
     }
 
-    const id = item.entity.entityId.toUpperCase();
+    const id = entity.entityId.toUpperCase();
     const rank = rankById.get(id) ?? null;
     if (rank === null) {
       return {
         inputName: item.inputName,
-        resolvedName: item.entity.name,
-        entityId: item.entity.entityId,
+        resolvedName: entity.name,
+        entityId: entity.entityId,
         resolution: "resolved",
         evaluationValue: null,
         qlooRank: null,
@@ -62,15 +79,17 @@ export function evaluateCandidates(
     const verdict = verdictForRank(rank, baselineResultCount);
     return {
       inputName: item.inputName,
-      resolvedName: item.entity.name,
-      entityId: item.entity.entityId,
+      resolvedName: entity.name,
+      entityId: entity.entityId,
       resolution: "resolved",
       evaluationValue: rank,
       qlooRank: rank,
       verdict,
       evidence: baselineResultCount < 3
         ? "Qloo returned too few baseline places to apply the documented rank thresholds. No verdict was assigned."
-        : "Qloo placed this entity at rank " + rank + " of " + baselineResultCount +
+        : (baselineDisambiguated
+            ? "Qloo search returned multiple exact-name matches, but the location-filtered baseline contained one exact-name entity. Resolved within that context. "
+            : "") + "Qloo placed this entity at rank " + rank + " of " + baselineResultCount +
           " returned places sorted by affinity for the supplied taste anchors and location. This is an ordinal position, not a numeric affinity score or a guarantee of preference."
     };
   });
