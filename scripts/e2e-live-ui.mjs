@@ -33,9 +33,9 @@ try {
     "px exceeds viewport " + mobileWidth.viewport + "px.");
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByLabel("Taste anchor 1").fill("Tyler, the Creator");
-  await page.getByLabel("Taste anchor 2").fill("Aesop");
-  await page.getByLabel("Taste anchor 3").fill("Spirited Away");
+  await page.getByRole("textbox", { name: "Taste anchor 1" }).fill("Tyler, the Creator");
+  await page.getByRole("textbox", { name: "Taste anchor 2" }).fill("Aesop");
+  await page.getByRole("textbox", { name: "Taste anchor 3" }).fill("Spirited Away");
   await page.locator("#location").fill("New York City");
   await page.locator("#task").fill("Check an agent's place recommendations for New York City.");
   await page.getByLabel("Recommendation candidate 1").fill("One Times Square");
@@ -55,7 +55,7 @@ try {
     "The first live evaluation produced no ranked candidates: " + firstReceipt);
 
   // Change exactly one anchor and submit through the real browser UI again.
-  await page.getByLabel("Taste anchor 3").fill("Frank Ocean");
+  await page.getByRole("textbox", { name: "Taste anchor 3" }).fill("Frank Ocean");
   await page.getByRole("button", { name: /Rerun taste test/ }).click();
   await page.locator(".comparison-section").waitFor({ state: "visible", timeout: 90000 });
   const controlledSwap = page.locator(".anchor-change-report.controlled");
