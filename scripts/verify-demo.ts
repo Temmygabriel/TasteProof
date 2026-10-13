@@ -86,8 +86,10 @@ async function main() {
     first = await runTasteTest(firstInput);
     reportRun(first, "Baseline-derived live test");
   }
-  if (first.rankedCandidateCount < 1 || first.baselineResultCount < 3) {
-    throw new Error("Initial run needs at least one ranked candidate and a baseline of three or more Qloo results; got " +
+  const minimumRankedCandidates = baselineSmoke ? 3 : 1;
+  if (first.rankedCandidateCount < minimumRankedCandidates || first.baselineResultCount < 3) {
+    throw new Error("Initial run needs at least " + minimumRankedCandidates +
+      " ranked candidate(s) and a baseline of three or more Qloo results; got " +
       first.rankedCandidateCount + " ranked candidate(s), " + first.baselineResultCount + " baseline result(s).");
   }
 
@@ -101,8 +103,10 @@ async function main() {
   if (first.testId === second.testId || second.baselineResultCount < 3) {
     throw new Error("The second live Anchor Swap run is incomplete.");
   }
-  if (second.rankedCandidateCount < 1) {
-    throw new Error("Anchor Swap returned no candidates with ranking evidence. The workflow must not mark a zero-evidence comparison as a successful end-to-end test.");
+  if (second.rankedCandidateCount < minimumRankedCandidates) {
+    throw new Error("Anchor Swap needs at least " + minimumRankedCandidates +
+      " candidates with ranking evidence; got " + second.rankedCandidateCount +
+      ". A zero- or low-evidence comparison must not count as a successful end-to-end test.");
   }
 
   const comparisons = first.candidates.map((oldCandidate) => {
