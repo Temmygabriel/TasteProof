@@ -49,7 +49,18 @@ async function main() {
     task: fixture.taskTemplate.replaceAll("{location}", location),
     location
   };
-  const first = await runTasteTest(firstInput);
+  let first: TasteTestRun;
+  try {
+    first = await runTasteTest(firstInput);
+  } catch (error) {
+    const detail = error as Error & { unresolvedAnchors?: Array<{ name: string; type: string; candidatesFound: number }> };
+    if (detail.unresolvedAnchors?.length) {
+      console.error("Unresolved taste anchors: " + detail.unresolvedAnchors.map((item) =>
+        item.name + " (" + item.type + ", " + (item.candidatesFound ? "multiple exact matches" : "no exact match") + ")"
+      ).join("; "));
+    }
+    throw error;
+  }
   reportRun(first, "Initial live test");
   if (first.rankedCandidateCount < 1 || first.baselineResultCount < 3) {
     throw new Error("The initial run returned no candidate in a baseline of at least three Qloo results. Live verification failed.");

@@ -113,7 +113,10 @@ function normalizeEntityName(name: string): string {
 export function chooseEntity(query: string, entities: QlooEntity[]): QlooEntity | null {
   const normalized = normalizeEntityName(query);
   const exact = entities.filter((entity) => normalizeEntityName(entity.name) === normalized);
-  return exact.length === 1 ? exact[0] : null;
+  // Some provider responses can repeat the same entity ID. Repeated rows are not
+  // genuine ambiguity; only distinct matching IDs should block exact resolution.
+  const unique = Array.from(new Map(exact.map((entity) => [entity.entityId.toUpperCase(), entity])).values());
+  return unique.length === 1 ? unique[0] : null;
 }
 
 export async function searchEntities(query: string, type: AnchorType): Promise<QlooEntity[]> {

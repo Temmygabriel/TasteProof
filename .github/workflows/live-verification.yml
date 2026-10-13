@@ -1,3 +1,4 @@
+# Runs on workflow edits so the live API smoke test can be repeated after resolver fixes.
 name: TasteProof live verification
 
 on:
