@@ -9,7 +9,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "verify-demo": "tsx scripts/verify-demo.ts"
+    "verify-demo": "tsx scripts/verify-demo.ts",
+    "verify-multi-anchor": "tsx scripts/verify-multi-anchor.ts"
   },
   "dependencies": {
     "next": "16.4.0",
