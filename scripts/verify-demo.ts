@@ -23,8 +23,8 @@ function required(name: string): string {
 function reportRun(run: TasteTestRun, label: string) {
   const unresolved = run.candidates.filter((candidate) => candidate.verdict === "UNRESOLVED").length;
   console.log(label + ": " + run.rankedCandidateCount + "/" + run.candidates.length +
-    " candidates with Qloo ranking evidence; " + unresolved + " unresolved; baseline=" +
-    run.baselineResultCount + ".");
+    " submitted candidates ranked by Qloo; " + unresolved + " unresolved; candidate ranking results=" +
+    run.baselineResultCount + "; discovery baseline=" + run.baseline.length + ".");
   console.log(label + " baseline sample: " +
     run.baseline.slice(0, 10).map((entity) => entity.name + " [rank " + entity.rank + "]").join(" | "));
   for (const candidate of run.candidates) {
@@ -75,10 +75,10 @@ async function main() {
     throw error;
   }
   reportRun(first, "Initial live test");
-  if (baselineSmoke && first.baselineResultCount >= 3) {
+  if (baselineSmoke && first.baseline.length >= 3) {
     // A smoke test must exercise candidate resolution against actual provider
-    // entities, not arbitrary hotel names that may be absent from the baseline.
-    // Use up to ten real baseline names (the product's supported maximum).
+    // entities, not arbitrary hotel names which may be missing from Qloo.
+    // Use up to ten actual discovery-baseline names (the product's supported maximum).
     candidateNames = first.baseline.slice(0, 10).map((entity) => entity.name);
     firstInput.candidates = candidateNames;
     console.log("Smoke test is evaluating " + candidateNames.length +
