@@ -1,7 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="248" height="48" viewBox="0 0 248 48">
-  <rect x="2" y="4" width="40" height="40" fill="#c34d35"/>
-  <circle cx="22" cy="24" r="11" fill="none" stroke="#fffefa" stroke-width="2"/>
-  <circle cx="22" cy="24" r="4" fill="#fffefa"/>
-  <path d="M22 8v5M22 35v5M6 24h5M33 24h5" stroke="#fffefa" stroke-width="1.6" stroke-linecap="square"/>
-  <text x="53" y="31" fill="#20231f" font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif" font-size="25" font-weight="600" letter-spacing="-1">TasteProof</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="236" height="48" viewBox="0 0 236 48" role="img" aria-labelledby="title">
+  <title id="title">TasteProof</title>
+  <g transform="translate(2 3)" fill="none" stroke="#a94329" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 40C18 29 19 17 28 5"/>
+    <path d="M19 33C7 32 2 25 3 16c9 1 17 6 16 17Z" fill="#c85d3a" stroke="none"/>
+    <path d="M20 24C20 13 26 6 36 3c2 10-3 18-16 21Z" fill="#b84c30" stroke="none"/>
+    <path d="M19 36C29 34 36 38 39 45c-10 2-17-1-20-9Z" fill="#d8895e" stroke="none" transform="translate(0 -3)"/>
+    <path d="M15 29C7 21 8 12 14 6c8 7 10 15 1 23Z" fill="#e5ad84" stroke="none"/>
+  </g>
+  <text x="48" y="31.5" fill="#33251e" font-family="Georgia, 'Times New Roman', serif" font-size="25" font-weight="600" letter-spacing="-1.2">TasteProof</text>
 </svg>
