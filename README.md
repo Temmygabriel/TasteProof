@@ -22,9 +22,10 @@ The interface follows the **Test Lab** direction: warm paper, editorial typograp
 2. Paste one to ten place recommendations from the agent being tested.
 3. If a name is ambiguous or does not match exactly, use **Find Qloo match** and choose the exact entity from live Qloo search results. A failed first attempt also opens the returned matches beside the relevant anchor.
 4. TasteProof uses the selected Qloo entity IDs for the evaluation, so the user is not forced to use a built-in example or depend on exact-name matching.
-5. TasteProof requests a broader set of up to 20 places from Qloo Insights, sorted by affinity for the supplied taste anchors and location.
-6. It assigns PASS, REVIEW, FAIL or UNRESOLVED using a published relative-ranking rule. Names missing from the returned baseline remain unresolved rather than being guessed.
-7. Change one anchor, run a second test and compare the actual results.
+5. TasteProof asks Qloo Insights to rank the submitted, resolved place candidates directly by affinity using their exact Qloo entity IDs and the supplied taste context. A candidate no longer needs to happen to appear in an unrelated top-20 list to receive a rank.
+6. TasteProof also shows a separate list of up to 20 related places as discovery evidence. This list is contextual evidence, not the filter used to decide whether a submitted candidate gets a rank.
+7. It assigns PASS, REVIEW, FAIL or UNRESOLVED using a published relative-ranking rule. Candidates Qloo cannot resolve or return remain unresolved rather than being guessed.
+8. Change one anchor, run a second test and compare the actual results.
 
 No result is preloaded or labelled as live evidence. If Qloo is not configured or returns insufficient evidence, TasteProof explains the blocker instead of manufacturing a result.
 
