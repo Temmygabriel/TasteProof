@@ -77,6 +77,14 @@ try {
   await page.getByRole("textbox", { name: "Recommendation candidate 2" }).fill("Brooklyn Bridge");
   await page.getByRole("textbox", { name: "Recommendation candidate 3" }).fill("Mood Fabrics");
 
+  // Exercise the user-facing disambiguation path: search Qloo and explicitly
+  // select the canonical entity ID instead of relying only on exact-name lookup.
+  await page.getByRole("button", { name: "Find Qloo matches for taste anchor 1" }).click();
+  const exactAnchorMatch = page.locator(".entity-match-option").filter({ hasText: "Tyler, the Creator" }).first();
+  await exactAnchorMatch.waitFor({ state: "visible", timeout: 30000 });
+  await exactAnchorMatch.click();
+  await page.locator(".selected-entity-note").first().waitFor({ state: "visible", timeout: 5000 });
+
   await page.getByRole("button", { name: /Run taste test/ }).click();
   await page.locator(".receipt-title h3").waitFor({ state: "visible", timeout: 90000 });
   const firstReceipt = await page.locator(".receipt-title h3").innerText();
@@ -155,6 +163,7 @@ try {
     qlooKeyConfigured: true,
     firstReceipt,
     baselineSummary: firstBaseline,
+    explicitQlooEntitySelection: true,
     candidateRows: firstRows,
     anchorSwapControlled: true,
     comparisonRows: await page.locator(".comparison-row").count(),

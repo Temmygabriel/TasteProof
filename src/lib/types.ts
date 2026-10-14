@@ -8,11 +8,20 @@ export type Verdict = "PASS" | "REVIEW" | "FAIL" | "UNRESOLVED";
 export interface TasteAnchorInput {
   name: string;
   type: AnchorType;
+  /** Qloo entity selected by the user from live search results. */
+  entityId?: string;
+}
+
+export interface TasteEntitySelection {
+  name: string;
+  entityId: string;
 }
 
 export interface TasteTestInput {
   anchors: TasteAnchorInput[];
   candidates: string[];
+  /** Selected Qloo place entities, keyed by candidate name; unselected names still use exact lookup. */
+  candidateSelections?: TasteEntitySelection[];
   task: string;
   location: string;
 }

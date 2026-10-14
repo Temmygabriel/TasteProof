@@ -4,7 +4,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { AnchorType, TasteTestRun, Verdict } from "../lib/types";
 import { compareAnchorChanges } from "../lib/anchor-change";
 
-type AnchorDraft = { name: string; type: AnchorType };
+type QlooEntityOption = { entityId: string; name: string; subtype: string | null };
+type AnchorDraft = { name: string; type: AnchorType; entityId?: string };
+type EntitySearchState = {
+  query: string;
+  type?: AnchorType;
+  loading: boolean;
+  matches: QlooEntityOption[];
+  error?: string;
+};
 
 const initialAnchors: AnchorDraft[] = [
   { name: "Tyler, the Creator", type: "artist" },
@@ -73,6 +81,11 @@ export default function HomePage() {
   const [task, setTask] = useState(initialTask);
   const [location, setLocation] = useState(initialLocation);
   const [candidates, setCandidates] = useState<string[]>(initialCandidates);
+  const [candidateEntityIds, setCandidateEntityIds] = useState<Array<string | null>>(
+    initialCandidates.map(() => null)
+  );
+  const [anchorSearch, setAnchorSearch] = useState<Record<number, EntitySearchState>>({});
+  const [candidateSearch, setCandidateSearch] = useState<Record<number, EntitySearchState>>({});
   const [result, setResult] = useState<TasteTestRun | null>(null);
   const [previousRun, setPreviousRun] = useState<TasteTestRun | null>(null);
   const [error, setError] = useState("");
@@ -93,35 +106,144 @@ export default function HomePage() {
     return () => { active = false; };
   }, []);
 
-  function setAnchor(index: number, key: keyof AnchorDraft, value: string) {
+  function clearAnchorSearch(index: number) {
+    setAnchorSearch((current) => {
+      const next = { ...current };
+      delete next[index];
+      return next;
+    });
+  }
+
+  function clearCandidateSearch(index: number) {
+    setCandidateSearch((current) => {
+      const next = { ...current };
+      delete next[index];
+      return next;
+    });
+  }
+
+  function setAnchor(index: number, key: "name" | "type", value: string) {
     setAnchors((current) => current.map((anchor, i) => {
       if (i !== index) return anchor;
+      // A typed name/category change invalidates any previously selected entity ID.
       return key === "type"
-        ? { ...anchor, type: value as AnchorType }
-        : { ...anchor, name: value };
+        ? { name: anchor.name, type: value as AnchorType }
+        : { name: value, type: anchor.type };
     }));
+    clearAnchorSearch(index);
+  }
+
+  async function requestEntityMatches(query: string, type: AnchorType): Promise<QlooEntityOption[]> {
+    const response = await fetch("/api/qloo/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ query, type })
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(typeof payload.error === "string" ? payload.error : "Qloo entity search failed.");
+    }
+    return Array.isArray(payload.entities) ? payload.entities as QlooEntityOption[] : [];
+  }
+
+  async function searchAnchor(index: number) {
+    const anchor = anchors[index];
+    const query = anchor?.name.trim();
+    if (!anchor || !query || busy) return;
+    setAnchorSearch((current) => ({
+      ...current,
+      [index]: { query, type: anchor.type, loading: true, matches: [] }
+    }));
+    try {
+      const matches = await requestEntityMatches(query, anchor.type);
+      setAnchorSearch((current) => ({
+        ...current,
+        [index]: { query, type: anchor.type, loading: false, matches }
+      }));
+    } catch (caught) {
+      setAnchorSearch((current) => ({
+        ...current,
+        [index]: {
+          query, type: anchor.type, loading: false, matches: [],
+          error: caught instanceof Error ? caught.message : "Qloo entity search failed."
+        }
+      }));
+    }
+  }
+
+  function selectAnchorMatch(index: number, match: QlooEntityOption) {
+    setAnchors((current) => current.map((anchor, i) => i === index
+      ? { name: match.name, type: anchor.type, entityId: match.entityId }
+      : anchor
+    ));
+    clearAnchorSearch(index);
+  }
+
+  async function searchCandidate(index: number) {
+    const query = candidates[index]?.trim();
+    if (!query || busy) return;
+    setCandidateSearch((current) => ({
+      ...current,
+      [index]: { query, loading: true, matches: [] }
+    }));
+    try {
+      const matches = await requestEntityMatches(query, "place");
+      setCandidateSearch((current) => ({
+        ...current,
+        [index]: { query, loading: false, matches }
+      }));
+    } catch (caught) {
+      setCandidateSearch((current) => ({
+        ...current,
+        [index]: {
+          query, loading: false, matches: [],
+          error: caught instanceof Error ? caught.message : "Qloo entity search failed."
+        }
+      }));
+    }
+  }
+
+  function setCandidateName(index: number, value: string) {
+    setCandidates((current) => current.map((item, i) => i === index ? value : item));
+    setCandidateEntityIds((current) => current.map((id, i) => i === index ? null : id));
+    clearCandidateSearch(index);
+  }
+
+  function selectCandidateMatch(index: number, match: QlooEntityOption) {
+    setCandidates((current) => current.map((name, i) => i === index ? match.name : name));
+    setCandidateEntityIds((current) => current.map((id, i) => i === index ? match.entityId : id));
+    clearCandidateSearch(index);
   }
 
   function addAnchor() {
     setAnchors((current) => current.length >= 5
       ? current
       : [...current, { name: "", type: "artist" }]);
+    setAnchorSearch({});
   }
 
   function removeAnchor(index: number) {
     setAnchors((current) => current.length <= 1
       ? current
       : current.filter((_, i) => i !== index));
+    setAnchorSearch({});
   }
 
   function addCandidate() {
     setCandidates((current) => current.length >= 10 ? current : [...current, ""]);
+    setCandidateEntityIds((current) => current.length >= 10 ? current : [...current, null]);
+    setCandidateSearch({});
   }
 
   function removeCandidate(index: number) {
     setCandidates((current) => current.length <= 1
       ? current
       : current.filter((_, i) => i !== index));
+    setCandidateEntityIds((current) => current.length <= 1
+      ? current
+      : current.filter((_, i) => i !== index));
+    setCandidateSearch({});
   }
 
   function restoreVerifiedExample() {
@@ -129,6 +251,9 @@ export default function HomePage() {
     setTask(initialTask);
     setLocation(initialLocation);
     setCandidates([...initialCandidates]);
+    setCandidateEntityIds(initialCandidates.map(() => null));
+    setAnchorSearch({});
+    setCandidateSearch({});
     setResult(null);
     setPreviousRun(null);
     setError("");
@@ -141,22 +266,70 @@ export default function HomePage() {
     setErrorState("");
     setBusy(true);
     try {
-      const submittedCandidates = candidates.map((candidate) => candidate.trim()).filter(Boolean);
+      const candidateRows = candidates.map((candidate, index) => ({
+        name: candidate.trim(),
+        entityId: candidateEntityIds[index] ?? null
+      })).filter((candidate) => candidate.name);
+      const submittedCandidates = candidateRows.map((candidate) => candidate.name);
       if (!submittedCandidates.length) {
         throw new Error("Add at least one recommendation from the AI agent before running the test.");
       }
+      const submittedAnchors = anchors.map((anchor) => ({
+        name: anchor.name.trim(),
+        type: anchor.type,
+        ...(anchor.entityId ? { entityId: anchor.entityId } : {})
+      }));
+      const candidateSelections = candidateRows
+        .filter((candidate): candidate is { name: string; entityId: string } => Boolean(candidate.entityId))
+        .map(({ name, entityId }) => ({ name, entityId }));
       const response = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ anchors, task, location, candidates: submittedCandidates })
+        body: JSON.stringify({
+          anchors: submittedAnchors,
+          task,
+          location,
+          candidates: submittedCandidates,
+          candidateSelections
+        })
       });
       const payload = await response.json();
       if (!response.ok) {
         setErrorState(typeof payload.state === "string" ? payload.state : "");
-        const missing = Array.isArray(payload.unresolvedAnchors)
-          ? " Unresolved by Qloo: " + payload.unresolvedAnchors.map((item: { name: string; type?: string }) =>
-              item.name + (item.type ? " (category: " + item.type.replaceAll("_", " ") + ")" : "")
-            ).join(", ") + ". Check that each category matches the kind of entity. If it still fails with the correct category, try a better-known or more specific name."
+        const unresolved = Array.isArray(payload.unresolvedAnchors) ? payload.unresolvedAnchors as Array<{
+          name: string; type?: AnchorType; matches?: QlooEntityOption[];
+        }> : [];
+        if (unresolved.length) {
+          const firstUnresolvedIndex = anchors.findIndex((anchor) =>
+            unresolved.some((item) => item.name.trim().toLocaleLowerCase() === anchor.name.trim().toLocaleLowerCase() && item.type === anchor.type)
+          );
+          setAnchorSearch((current) => {
+            const next = { ...current };
+            unresolved.forEach((item) => {
+              const index = anchors.findIndex((anchor) =>
+                anchor.name.trim().toLocaleLowerCase() === item.name.trim().toLocaleLowerCase() && anchor.type === item.type
+              );
+              if (index >= 0) {
+                next[index] = {
+                  query: anchors[index].name.trim(),
+                  type: anchors[index].type,
+                  loading: false,
+                  matches: Array.isArray(item.matches) ? item.matches : []
+                };
+              }
+            });
+            return next;
+          });
+          if (firstUnresolvedIndex >= 0) {
+            window.setTimeout(() => {
+              document.getElementById("anchor-row-" + firstUnresolvedIndex)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 60);
+          }
+        }
+        const missing = unresolved.length
+          ? " Could not uniquely resolve: " + unresolved.map((item) =>
+              item.name + (item.type ? " (" + item.type.replaceAll("_", " ") + ")" : "")
+            ).join(", ") + ". Choose the matching Qloo entity shown below an anchor. If no match is shown, change the category or use a more specific name."
           : "";
         throw new Error((payload.error || "The test could not be completed.") + missing);
       }
@@ -277,7 +450,7 @@ export default function HomePage() {
             <div>
               <span className="section-kicker">YOUR TURN / 01</span>
               <h2>Let’s test the taste.</h2>
-              <p>Start with the working example, or replace it with the exact output from your own AI agent.</p>
+              <p>Enter your own taste context and recommendations. When Qloo returns ambiguous matches, choose the exact entities instead of retrying blindly.</p>
             </div>
             <div className="live-label"><span className={"connection-dot " + (qlooConfigured ? "ready" : "")} /> {qlooConfigured ? "LIVE REQUEST READY" : "LIVE QLOO TEST"}<small>Results are fetched when you run the test.</small></div>
           </div>
@@ -292,27 +465,52 @@ export default function HomePage() {
               <section className="form-section">
                 <div className="form-heading">
                   <span className="form-step">01</span>
-                  <div><h3>What does the person like?</h3><p>Pick the taste anchors the AI was given.</p></div>
+                  <div><h3>What does the person like?</h3><p>Enter any anchor, choose its category, and match it to Qloo when needed.</p></div>
                 </div>
                 <div className="anchor-list">
-                  {anchors.map((anchor, index) => (
-                    <div className="anchor-row" key={index}>
-                      <span className="row-count">0{index + 1}</span>
-                      <input aria-label={"Taste anchor " + (index + 1)} value={anchor.name} maxLength={120} required placeholder="e.g. Tyler, the Creator" onChange={(event) => setAnchor(index, "name", event.target.value)} />
-                      <select aria-label={"Category for taste anchor " + (index + 1)} value={anchor.type} onChange={(event) => setAnchor(index, "type", event.target.value)}>
-                        {anchorTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
-                      <button className="row-remove anchor-remove" type="button" aria-label={"Remove taste anchor " + (index + 1)} disabled={anchors.length <= 1} onClick={() => removeAnchor(index)}>×</button>
-                    </div>
-                  ))}
+                  {anchors.map((anchor, index) => {
+                    const search = anchorSearch[index];
+                    const activeSearch = Boolean(search && search.query === anchor.name.trim() && search.type === anchor.type);
+                    return (
+                      <div className="anchor-item" key={index}>
+                        <div className="anchor-row" id={"anchor-row-" + index}>
+                          <span className="row-count">0{index + 1}</span>
+                          <input aria-label={"Taste anchor " + (index + 1)} value={anchor.name} maxLength={120} required placeholder="e.g. Tyler, the Creator" onChange={(event) => setAnchor(index, "name", event.target.value)} />
+                          <select aria-label={"Category for taste anchor " + (index + 1)} value={anchor.type} onChange={(event) => setAnchor(index, "type", event.target.value)}>
+                            {anchorTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                          <button className="resolve-row" type="button" aria-label={"Find Qloo matches for taste anchor " + (index + 1)} disabled={busy || !anchor.name.trim() || Boolean(search?.loading)} onClick={() => void searchAnchor(index)}>
+                            {search?.loading ? "Searching…" : anchor.entityId ? "Change match" : "Find Qloo match"}
+                          </button>
+                          <button className="row-remove anchor-remove" type="button" aria-label={"Remove taste anchor " + (index + 1)} disabled={anchors.length <= 1 || busy} onClick={() => removeAnchor(index)}>×</button>
+                        </div>
+                        {anchor.entityId ? <p className="selected-entity-note"><span>✓</span> Using the selected Qloo entity <strong>{anchor.name}</strong>. Editing its name or category clears this selection.</p> : null}
+                        {activeSearch && search ? (
+                          <div className="entity-match-panel" role="group" aria-label={"Qloo matches for taste anchor " + (index + 1)}>
+                            <p className="entity-match-intro">
+                              {search.loading ? "Searching Qloo’s entity catalogue…" : search.error ? "Search could not finish: " + search.error : search.matches.length ? "Choose the exact entity you mean. The selected Qloo ID will be used for this test." : "Qloo returned no matches for this name and category. Try a more specific name or change the category."}
+                            </p>
+                            {search.matches.length ? <div className="entity-match-options">
+                              {search.matches.map((match) => (
+                                <button className="entity-match-option" type="button" key={match.entityId} onClick={() => selectAnchorMatch(index, match)} disabled={busy}>
+                                  <span><strong>{match.name}</strong><small>{match.subtype && !match.subtype.startsWith("urn:") ? match.subtype : anchorTypeOptions.find((option) => option.value === anchor.type)?.label || "Qloo entity"}</small></span>
+                                  <span className="match-use">Use this ↗</span>
+                                </button>
+                              ))}
+                            </div> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
-                <button className="add-row" type="button" disabled={anchors.length >= 5} onClick={addAnchor}>＋ Add another taste anchor <span>{anchors.length} / 5</span></button>
+                <button className="add-row" type="button" disabled={anchors.length >= 5 || busy} onClick={addAnchor}>＋ Add another taste anchor <span>{anchors.length} / 5</span></button>
               </section>
 
               <section className="form-section agent-section">
                 <div className="form-heading">
                   <span className="form-step">02</span>
-                  <div><h3>What did the AI recommend?</h3><p>These example places can be replaced with your agent’s output.</p></div>
+                  <div><h3>What did the AI recommend?</h3><p>Enter any place recommendations from the agent you want to evaluate.</p></div>
                 </div>
                 <label htmlFor="task">The task you gave the AI</label>
                 <input className="text-field" id="task" value={task} maxLength={180} required onChange={(event) => setTask(event.target.value)} />
@@ -320,20 +518,46 @@ export default function HomePage() {
                   <div><label htmlFor="location">Where?</label><input className="text-field" id="location" value={location} maxLength={100} required onChange={(event) => setLocation(event.target.value)} /></div>
                   <div className="field-hint"><span className="tiny-pin">⌖</span><p>Qloo uses this location to shape the place baseline.</p></div>
                 </div>
-                <div className="candidate-head"><label>Recommendations to check</label><small>{candidates.filter((candidate) => candidate.trim()).length} EXAMPLE ITEMS</small></div>
+                <div className="candidate-head"><label>Recommendations to check</label><small>{candidates.filter((candidate) => candidate.trim()).length} OF 10 ITEMS</small></div>
                 <div className="candidate-list">
-                  {candidates.map((candidate, index) => (
-                    <div className="candidate-row" key={index}>
-                      <span className="candidate-number">{String(index + 1).padStart(2, "0")}</span>
-                      <input aria-label={"Recommendation candidate " + (index + 1)} value={candidate} maxLength={160}
-                        placeholder={index === 0 ? "First recommendation" : index === 1 ? "Second recommendation" : index === 2 ? "Third recommendation" : "Another recommendation"}
-                        onChange={(event) => setCandidates((current) => current.map((item, i) => i === index ? event.target.value : item))} />
-                      <button className="row-remove" type="button" aria-label={"Remove recommendation candidate " + (index + 1)} disabled={candidates.length <= 1} onClick={() => removeCandidate(index)}>×</button>
-                    </div>
-                  ))}
+                  {candidates.map((candidate, index) => {
+                    const search = candidateSearch[index];
+                    const activeSearch = Boolean(search && search.query === candidate.trim());
+                    const selectedEntityId = candidateEntityIds[index];
+                    return (
+                      <div className="candidate-item" key={index}>
+                        <div className="candidate-row">
+                          <span className="candidate-number">{String(index + 1).padStart(2, "0")}</span>
+                          <input aria-label={"Recommendation candidate " + (index + 1)} value={candidate} maxLength={160}
+                            placeholder={index === 0 ? "First recommendation" : index === 1 ? "Second recommendation" : index === 2 ? "Third recommendation" : "Another recommendation"}
+                            onChange={(event) => setCandidateName(index, event.target.value)} />
+                          <button className="resolve-row" type="button" aria-label={"Find Qloo matches for recommendation candidate " + (index + 1)} disabled={busy || !candidate.trim() || Boolean(search?.loading)} onClick={() => void searchCandidate(index)}>
+                            {search?.loading ? "Searching…" : selectedEntityId ? "Change match" : "Find match"}
+                          </button>
+                          <button className="row-remove" type="button" aria-label={"Remove recommendation candidate " + (index + 1)} disabled={candidates.length <= 1 || busy} onClick={() => removeCandidate(index)}>×</button>
+                        </div>
+                        {selectedEntityId ? <p className="selected-entity-note"><span>✓</span> Matched to the selected Qloo place <strong>{candidate}</strong>.</p> : null}
+                        {activeSearch && search ? (
+                          <div className="entity-match-panel" role="group" aria-label={"Qloo matches for recommendation candidate " + (index + 1)}>
+                            <p className="entity-match-intro">
+                              {search.loading ? "Searching Qloo’s place catalogue…" : search.error ? "Search could not finish: " + search.error : search.matches.length ? "Choose the exact place or business the agent recommended." : "Qloo returned no place matches. Try a more specific name or check that this recommendation is a place."}
+                            </p>
+                            {search.matches.length ? <div className="entity-match-options">
+                              {search.matches.map((match) => (
+                                <button className="entity-match-option" type="button" key={match.entityId} onClick={() => selectCandidateMatch(index, match)} disabled={busy}>
+                                  <span><strong>{match.name}</strong><small>{match.subtype && !match.subtype.startsWith("urn:") ? match.subtype : "Qloo place entity"}</small></span>
+                                  <span className="match-use">Use this ↗</span>
+                                </button>
+                              ))}
+                            </div> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
-                <button className="add-row" type="button" disabled={candidates.length >= 10} onClick={addCandidate}>＋ Add a recommendation <span>{candidates.filter((candidate) => candidate.trim()).length} / 10</span></button>
-                <p className="microcopy">Example inputs were used in the live browser check. Replace them with your agent’s output for your own test.</p>
+                <button className="add-row" type="button" disabled={candidates.length >= 10 || busy} onClick={addCandidate}>＋ Add a recommendation <span>{candidates.filter((candidate) => candidate.trim()).length} / 10</span></button>
+                <p className="microcopy">Paste your agent’s own recommendations. Use Find match when Qloo needs help identifying the exact place; no suggestions or verdicts are invented.</p>
               </section>
 
               {error ? <div className="error-box" role="alert"><strong>We couldn’t finish this taste test{errorState ? " · " + errorState.replaceAll("_", " ") : ""}</strong><p>{error}</p><span>Check the highlighted context, then run the test again. No result has been fabricated.</span></div> : null}

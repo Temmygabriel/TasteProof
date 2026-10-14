@@ -23,9 +23,19 @@ async function mapWithConcurrency<T, R>(
 }
 
 export class AnchorResolutionError extends Error {
-  readonly unresolvedAnchors: Array<{ name: string; type: AnchorType; candidatesFound: number }>;
+  readonly unresolvedAnchors: Array<{
+    name: string;
+    type: AnchorType;
+    candidatesFound: number;
+    matches: QlooEntity[];
+  }>;
   readonly trace: StateSnapshot;
-  constructor(items: Array<{ name: string; type: AnchorType; candidatesFound: number }>, trace: StateSnapshot) {
+  constructor(items: Array<{
+    name: string;
+    type: AnchorType;
+    candidatesFound: number;
+    matches: QlooEntity[];
+  }>, trace: StateSnapshot) {
     super("One or more taste anchors could not be resolved uniquely by Qloo.");
     this.name = "AnchorResolutionError";
     this.unresolvedAnchors = items;
@@ -42,25 +52,46 @@ export class DuplicateResolvedAnchorError extends Error {
 
 function resolveOne(name: string, entities: QlooEntity[]) {
   const entity = chooseEntity(name, entities);
-  if (entity) return { entity, resolution: "resolved" as const };
-  return { entity: null, resolution: entities.length > 1 ? "ambiguous" as const : "not_found" as const };
+  if (entity) return { entity, resolution: "resolved" as const, matches: entities };
+  return {
+    entity: null,
+    resolution: entities.length > 1 ? "ambiguous" as const : "not_found" as const,
+    matches: entities
+  };
+}
+
+function normalizedName(value: string) {
+  return value.normalize("NFKC").trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }
 
 export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun> {
   const machine = new TestStateMachine();
   machine.transition("CONFIGURED");
   machine.transition("RESOLVING_TASTE");
-  // Qloo can apply short burst limits. Keep a small concurrency cap instead
-  // of firing every anchor lookup at once.
-  const anchorMatches = await mapWithConcurrency(input.anchors, 2, async (anchor) => ({
-    anchor,
-    ...resolveOne(anchor.name, await searchEntities(anchor.name, anchor.type))
-  }));
+
+  // If the user picked a concrete Qloo result in the UI, use that exact entity
+  // ID. Otherwise try exact-name resolution and return Qloo suggestions if it
+  // is ambiguous or does not match exactly.
+  const anchorMatches = await mapWithConcurrency(input.anchors, 2, async (anchor) => {
+    if (anchor.entityId) {
+      return {
+        anchor,
+        entity: { entityId: anchor.entityId, name: anchor.name, subtype: null },
+        resolution: "resolved" as const,
+        matches: [] as QlooEntity[]
+      };
+    }
+    return {
+      anchor,
+      ...resolveOne(anchor.name, await searchEntities(anchor.name, anchor.type))
+    };
+  });
 
   const unresolvedAnchors = anchorMatches.filter((match) => !match.entity).map((match) => ({
     name: match.anchor.name,
     type: match.anchor.type,
-    candidatesFound: match.resolution === "ambiguous" ? 2 : 0
+    candidatesFound: match.matches.length,
+    matches: match.matches
   }));
   if (unresolvedAnchors.length) {
     machine.transition("ENTITY_NOT_FOUND");
@@ -82,10 +113,23 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
   }
 
   machine.transition("RESOLVING_CANDIDATES");
-  const candidateMatches = await mapWithConcurrency(input.candidates, 2, async (name) => ({
-    inputName: name,
-    ...resolveOne(name, await searchEntities(name, "place"))
-  }));
+  const selectedCandidateByName = new Map(
+    (input.candidateSelections ?? []).map((selection) => [normalizedName(selection.name), selection])
+  );
+  const candidateMatches = await mapWithConcurrency(input.candidates, 2, async (name) => {
+    const selection = selectedCandidateByName.get(normalizedName(name));
+    if (selection) {
+      return {
+        inputName: name,
+        entity: { entityId: selection.entityId, name: selection.name, subtype: null },
+        resolution: "resolved" as const
+      };
+    }
+    return {
+      inputName: name,
+      ...resolveOne(name, await searchEntities(name, "place"))
+    };
+  });
 
   machine.transition("EVALUATING");
   const baseline = await getAffinityBaseline(anchors.map((anchor) => anchor.entityId), input.location, 20);
