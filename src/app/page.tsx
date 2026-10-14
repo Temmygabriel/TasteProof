@@ -327,7 +327,7 @@ export default function HomePage() {
 
               <div className="submit-row">
                 <div className="submit-note"><span className="live-dot" /><div><strong>{busy ? "Asking Qloo to evaluate…" : "Your results come from a live request"}</strong><small>{busy ? "Waiting for the actual response. This may take a few seconds." : "No cached score. No invented match percentage."}</small></div></div>
-                <button className="primary-button run-button" type="submit" disabled={busy}>{busy ? "Testing…" : result ? "Run it again" : "Run taste test"} <span aria-hidden="true">→</span></button>
+                <button className="primary-button run-button" type="submit" disabled={busy}>{busy ? "Testing…" : result ? "Rerun taste test" : "Run taste test"} <span aria-hidden="true">→</span></button>
               </div>
               <div className="form-footnote"><span>🔒</span> Your Qloo API key stays on the server. The test receipt shows the returned evidence and the rule used.</div>
             </form>
