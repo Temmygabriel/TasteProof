@@ -24,7 +24,7 @@ function reportRun(run: TasteTestRun, label: string) {
   const unresolved = run.candidates.filter((candidate) => candidate.verdict === "UNRESOLVED").length;
   console.log(label + ": " + run.rankedCandidateCount + "/" + run.candidates.length +
     " submitted candidates ranked by Qloo; " + unresolved + " unresolved; candidate ranking results=" +
-    run.baselineResultCount + "; discovery baseline=" + run.baseline.length + ".");
+    run.candidateRankingResultCount + "; discovery baseline=" + run.baselineResultCount + ".");
   console.log(label + " baseline sample: " +
     run.baseline.slice(0, 10).map((entity) => entity.name + " [rank " + entity.rank + "]").join(" | "));
   for (const candidate of run.candidates) {
