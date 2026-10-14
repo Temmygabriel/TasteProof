@@ -180,7 +180,8 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
     candidates: evaluation.candidates,
     baseline,
     rankedCandidateCount: evaluation.rankedCandidateCount,
-    baselineResultCount: evaluation.baselineResultCount,
+    candidateRankingResultCount: evaluation.baselineResultCount,
+    baselineResultCount: baseline.length,
     evaluationRule:
       "Ask Qloo Insights to rank the submitted, resolved candidate place entities directly using filter.results.entities, the provided taste-anchor entity IDs, and the chosen location, sorted by affinity. Among candidate entities Qloo returns: top third = PASS, middle third = REVIEW, bottom third = FAIL. Candidates Qloo cannot resolve or return remain UNRESOLVED; if fewer than three candidates are returned, no relative verdict is assigned. Rank is ordinal, not a numeric affinity score. The separate 20-place discovery list is context only and is not used to decide whether a submitted candidate gets ranked.",
     providerNote:
