@@ -125,6 +125,9 @@ main { width: min(1160px, calc(100% - 64px)); margin: 0 auto; }
 .form-brand small { color: var(--terracotta); font: 9px var(--mono); letter-spacing: .07em; }
 .form-brand strong { font: 500 18px var(--serif); margin-top: 3px; }
 .example-badge { border: 1px solid #e1d3c1; color: #77685a; background: #fffdf8; padding: 7px 9px; font: 8px var(--mono); letter-spacing: .04em; text-align: center; }
+button.example-badge { cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
+button.example-badge:hover { border-color: #ca9c84; color: var(--terracotta); background: #fff8f0; }
+button.example-badge:focus-visible { outline: 2px solid #d69b7f; outline-offset: 3px; }
 .form-section { padding: 24px 24px 22px; border-bottom: 1px solid var(--line); }
 .form-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 19px; }
 .form-step { display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border: 1px solid #e5cbbb; border-radius: 50%; color: var(--terracotta); font: 11px var(--mono); }
