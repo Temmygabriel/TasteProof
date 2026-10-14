@@ -450,7 +450,7 @@ export default function HomePage() {
             <div>
               <span className="section-kicker">YOUR TURN / 01</span>
               <h2>Let’s test the taste.</h2>
-              <p>Start with the working example, or replace it with the exact output from your own AI agent.</p>
+              <p>Enter your own taste context and recommendations. When Qloo returns ambiguous matches, choose the exact entities instead of retrying blindly.</p>
             </div>
             <div className="live-label"><span className={"connection-dot " + (qlooConfigured ? "ready" : "")} /> {qlooConfigured ? "LIVE REQUEST READY" : "LIVE QLOO TEST"}<small>Results are fetched when you run the test.</small></div>
           </div>
@@ -465,27 +465,52 @@ export default function HomePage() {
               <section className="form-section">
                 <div className="form-heading">
                   <span className="form-step">01</span>
-                  <div><h3>What does the person like?</h3><p>Pick the taste anchors the AI was given.</p></div>
+                  <div><h3>What does the person like?</h3><p>Enter any anchor, choose its category, and match it to Qloo when needed.</p></div>
                 </div>
                 <div className="anchor-list">
-                  {anchors.map((anchor, index) => (
-                    <div className="anchor-row" key={index}>
-                      <span className="row-count">0{index + 1}</span>
-                      <input aria-label={"Taste anchor " + (index + 1)} value={anchor.name} maxLength={120} required placeholder="e.g. Tyler, the Creator" onChange={(event) => setAnchor(index, "name", event.target.value)} />
-                      <select aria-label={"Category for taste anchor " + (index + 1)} value={anchor.type} onChange={(event) => setAnchor(index, "type", event.target.value)}>
-                        {anchorTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
-                      <button className="row-remove anchor-remove" type="button" aria-label={"Remove taste anchor " + (index + 1)} disabled={anchors.length <= 1} onClick={() => removeAnchor(index)}>×</button>
-                    </div>
-                  ))}
+                  {anchors.map((anchor, index) => {
+                    const search = anchorSearch[index];
+                    const activeSearch = Boolean(search && search.query === anchor.name.trim() && search.type === anchor.type);
+                    return (
+                      <div className="anchor-item" key={index}>
+                        <div className="anchor-row" id={"anchor-row-" + index}>
+                          <span className="row-count">0{index + 1}</span>
+                          <input aria-label={"Taste anchor " + (index + 1)} value={anchor.name} maxLength={120} required placeholder="e.g. Tyler, the Creator" onChange={(event) => setAnchor(index, "name", event.target.value)} />
+                          <select aria-label={"Category for taste anchor " + (index + 1)} value={anchor.type} onChange={(event) => setAnchor(index, "type", event.target.value)}>
+                            {anchorTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                          <button className="resolve-row" type="button" aria-label={"Find Qloo matches for taste anchor " + (index + 1)} disabled={busy || !anchor.name.trim() || Boolean(search?.loading)} onClick={() => void searchAnchor(index)}>
+                            {search?.loading ? "Searching…" : anchor.entityId ? "Change match" : "Find Qloo match"}
+                          </button>
+                          <button className="row-remove anchor-remove" type="button" aria-label={"Remove taste anchor " + (index + 1)} disabled={anchors.length <= 1 || busy} onClick={() => removeAnchor(index)}>×</button>
+                        </div>
+                        {anchor.entityId ? <p className="selected-entity-note"><span>✓</span> Using the selected Qloo entity <strong>{anchor.name}</strong>. Editing its name or category clears this selection.</p> : null}
+                        {activeSearch && search ? (
+                          <div className="entity-match-panel" role="group" aria-label={"Qloo matches for taste anchor " + (index + 1)}>
+                            <p className="entity-match-intro">
+                              {search.loading ? "Searching Qloo’s entity catalogue…" : search.error ? "Search could not finish: " + search.error : search.matches.length ? "Choose the exact entity you mean. The selected Qloo ID will be used for this test." : "Qloo returned no matches for this name and category. Try a more specific name or change the category."}
+                            </p>
+                            {search.matches.length ? <div className="entity-match-options">
+                              {search.matches.map((match) => (
+                                <button className="entity-match-option" type="button" key={match.entityId} onClick={() => selectAnchorMatch(index, match)} disabled={busy}>
+                                  <span><strong>{match.name}</strong><small>{match.subtype && !match.subtype.startsWith("urn:") ? match.subtype : anchorTypeOptions.find((option) => option.value === anchor.type)?.label || "Qloo entity"}</small></span>
+                                  <span className="match-use">Use this ↗</span>
+                                </button>
+                              ))}
+                            </div> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
-                <button className="add-row" type="button" disabled={anchors.length >= 5} onClick={addAnchor}>＋ Add another taste anchor <span>{anchors.length} / 5</span></button>
+                <button className="add-row" type="button" disabled={anchors.length >= 5 || busy} onClick={addAnchor}>＋ Add another taste anchor <span>{anchors.length} / 5</span></button>
               </section>
 
               <section className="form-section agent-section">
                 <div className="form-heading">
                   <span className="form-step">02</span>
-                  <div><h3>What did the AI recommend?</h3><p>These example places can be replaced with your agent’s output.</p></div>
+                  <div><h3>What did the AI recommend?</h3><p>Enter any place recommendations from the agent you want to evaluate.</p></div>
                 </div>
                 <label htmlFor="task">The task you gave the AI</label>
                 <input className="text-field" id="task" value={task} maxLength={180} required onChange={(event) => setTask(event.target.value)} />
@@ -493,20 +518,46 @@ export default function HomePage() {
                   <div><label htmlFor="location">Where?</label><input className="text-field" id="location" value={location} maxLength={100} required onChange={(event) => setLocation(event.target.value)} /></div>
                   <div className="field-hint"><span className="tiny-pin">⌖</span><p>Qloo uses this location to shape the place baseline.</p></div>
                 </div>
-                <div className="candidate-head"><label>Recommendations to check</label><small>{candidates.filter((candidate) => candidate.trim()).length} EXAMPLE ITEMS</small></div>
+                <div className="candidate-head"><label>Recommendations to check</label><small>{candidates.filter((candidate) => candidate.trim()).length} OF 10 ITEMS</small></div>
                 <div className="candidate-list">
-                  {candidates.map((candidate, index) => (
-                    <div className="candidate-row" key={index}>
-                      <span className="candidate-number">{String(index + 1).padStart(2, "0")}</span>
-                      <input aria-label={"Recommendation candidate " + (index + 1)} value={candidate} maxLength={160}
-                        placeholder={index === 0 ? "First recommendation" : index === 1 ? "Second recommendation" : index === 2 ? "Third recommendation" : "Another recommendation"}
-                        onChange={(event) => setCandidates((current) => current.map((item, i) => i === index ? event.target.value : item))} />
-                      <button className="row-remove" type="button" aria-label={"Remove recommendation candidate " + (index + 1)} disabled={candidates.length <= 1} onClick={() => removeCandidate(index)}>×</button>
-                    </div>
-                  ))}
+                  {candidates.map((candidate, index) => {
+                    const search = candidateSearch[index];
+                    const activeSearch = Boolean(search && search.query === candidate.trim());
+                    const selectedEntityId = candidateEntityIds[index];
+                    return (
+                      <div className="candidate-item" key={index}>
+                        <div className="candidate-row">
+                          <span className="candidate-number">{String(index + 1).padStart(2, "0")}</span>
+                          <input aria-label={"Recommendation candidate " + (index + 1)} value={candidate} maxLength={160}
+                            placeholder={index === 0 ? "First recommendation" : index === 1 ? "Second recommendation" : index === 2 ? "Third recommendation" : "Another recommendation"}
+                            onChange={(event) => setCandidateName(index, event.target.value)} />
+                          <button className="resolve-row" type="button" aria-label={"Find Qloo matches for recommendation candidate " + (index + 1)} disabled={busy || !candidate.trim() || Boolean(search?.loading)} onClick={() => void searchCandidate(index)}>
+                            {search?.loading ? "Searching…" : selectedEntityId ? "Change match" : "Find match"}
+                          </button>
+                          <button className="row-remove" type="button" aria-label={"Remove recommendation candidate " + (index + 1)} disabled={candidates.length <= 1 || busy} onClick={() => removeCandidate(index)}>×</button>
+                        </div>
+                        {selectedEntityId ? <p className="selected-entity-note"><span>✓</span> Matched to the selected Qloo place <strong>{candidate}</strong>.</p> : null}
+                        {activeSearch && search ? (
+                          <div className="entity-match-panel" role="group" aria-label={"Qloo matches for recommendation candidate " + (index + 1)}>
+                            <p className="entity-match-intro">
+                              {search.loading ? "Searching Qloo’s place catalogue…" : search.error ? "Search could not finish: " + search.error : search.matches.length ? "Choose the exact place or business the agent recommended." : "Qloo returned no place matches. Try a more specific name or check that this recommendation is a place."}
+                            </p>
+                            {search.matches.length ? <div className="entity-match-options">
+                              {search.matches.map((match) => (
+                                <button className="entity-match-option" type="button" key={match.entityId} onClick={() => selectCandidateMatch(index, match)} disabled={busy}>
+                                  <span><strong>{match.name}</strong><small>{match.subtype && !match.subtype.startsWith("urn:") ? match.subtype : "Qloo place entity"}</small></span>
+                                  <span className="match-use">Use this ↗</span>
+                                </button>
+                              ))}
+                            </div> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
-                <button className="add-row" type="button" disabled={candidates.length >= 10} onClick={addCandidate}>＋ Add a recommendation <span>{candidates.filter((candidate) => candidate.trim()).length} / 10</span></button>
-                <p className="microcopy">Example inputs were used in the live browser check. Replace them with your agent’s output for your own test.</p>
+                <button className="add-row" type="button" disabled={candidates.length >= 10 || busy} onClick={addCandidate}>＋ Add a recommendation <span>{candidates.filter((candidate) => candidate.trim()).length} / 10</span></button>
+                <p className="microcopy">Paste your agent’s own recommendations. Use Find match when Qloo needs help identifying the exact place; no suggestions or verdicts are invented.</p>
               </section>
 
               {error ? <div className="error-box" role="alert"><strong>We couldn’t finish this taste test{errorState ? " · " + errorState.replaceAll("_", " ") : ""}</strong><p>{error}</p><span>Check the highlighted context, then run the test again. No result has been fabricated.</span></div> : null}
