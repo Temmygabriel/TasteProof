@@ -622,7 +622,7 @@ export default function HomePage() {
                 <div className="result-overview-content">
                   <small className="overline">THE RESULT AT A GLANCE</small>
                   <h4>{result.rankedCandidateCount === 0 ? "Not enough evidence to rank these recommendations." : result.candidates.every((candidate) => candidate.verdict === "PASS") ? "These recommendations align with the returned taste signal." : "Here’s how the recommendations stack up."}</h4>
-                  <p>{result.rankedCandidateCount} of {result.candidates.length} recommendations received a position in Qloo’s candidate-filtered affinity results ({result.baselineResultCount} returned). Verdicts compare the submitted candidates Qloo returned; they are not probabilities of liking a place.</p>
+                  <p>{result.rankedCandidateCount} of {result.candidates.length} recommendations received a position in Qloo’s candidate-filtered affinity results ({result.candidateRankingResultCount} candidate entities returned). Verdicts compare the submitted candidates Qloo returned; they are not probabilities of liking a place.</p>
                   <div className="summary-stats">
                     <div><strong>{verdictCount(result, "PASS")}</strong><span>Strong match</span></div>
                     <div><strong>{verdictCount(result, "REVIEW")}</strong><span>Take a closer look</span></div>
@@ -661,7 +661,7 @@ export default function HomePage() {
                       <div className="candidate-thumb"><img src={imageUrl} alt="Illustrative city photography, not a photo of the named recommendation" loading="lazy" /></div>
                       <div><strong>{candidate.resolvedName || candidate.inputName}</strong><p>{candidate.resolvedName ? "Resolved by Qloo" : candidate.resolution === "ambiguous" ? "Several possible entities" : "Could not resolve this name"}{candidate.entityId ? " · " + candidate.entityId : ""}</p></div>
                     </div>
-                    <div className="rank">{candidate.qlooRank !== null ? <><strong>#{candidate.qlooRank}</strong><span>of {result.baselineResultCount}</span></> : <span className="no-rank">No rank</span>}</div>
+                    <div className="rank">{candidate.qlooRank !== null ? <><strong>#{candidate.qlooRank}</strong><span>of {result.candidateRankingResultCount}</span></> : <span className="no-rank">No rank</span>}</div>
                     <div><span className={"verdict verdict-" + candidate.verdict.toLowerCase()}><i />{verdictLabel[candidate.verdict]}</span></div>
                     <p className="evidence-copy">{candidate.evidence}</p>
                   </article>;
