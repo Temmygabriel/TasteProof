@@ -162,7 +162,24 @@ export async function getCandidateRanking(
   candidateEntityIds: string[],
   location: string
 ): Promise<RankedQlooEntity[]> {
-  const candidateSet = new Set(candidateEntityIds.map((id) => id.toUpperCase()));
-  const baseline = await getAffinityBaseline(anchorEntityIds, location, 20);
-  return baseline.filter((entity) => candidateSet.has(entity.entityId.toUpperCase()));
+  const uniqueCandidateIds = Array.from(new Set(
+    candidateEntityIds.map((id) => id.trim()).filter(Boolean)
+  ));
+  if (!uniqueCandidateIds.length) return [];
+
+  const config = qlooConfig();
+  const url = new URL("/v2/insights", config.baseUrl);
+  url.searchParams.set("filter.type", "urn:entity:place");
+  url.searchParams.set("signal.interests.entities", anchorEntityIds.join(","));
+  url.searchParams.set("filter.location.query", location);
+  // Ask Qloo to score the submitted entities themselves. Filtering a separate
+  // top-20 discovery list client-side can make every valid submission appear
+  // unresolved simply because none happens to be in that unrelated result window.
+  url.searchParams.set("filter.results.entities", uniqueCandidateIds.join(","));
+  url.searchParams.set("sort_by", "affinity");
+  url.searchParams.set("take", String(Math.min(50, uniqueCandidateIds.length)));
+
+  const parsed = parseQlooEntities(await getJson(url));
+  const unique = Array.from(new Map(parsed.map((entity) => [entity.entityId.toUpperCase(), entity])).values());
+  return unique.map((entity, index) => ({ ...entity, rank: index + 1 }));
 }

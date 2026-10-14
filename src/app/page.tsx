@@ -610,7 +610,7 @@ export default function HomePage() {
           ) : (
             <div className="receipt">
               <div className="receipt-title">
-                <div><small>YOUR TASTE TEST / QLOO LIVE</small><h3>{result.rankedCandidateCount} submitted candidates matched the Qloo baseline</h3><p>We checked the recommendations you provided against the cultural-intelligence signal returned for {result.location}.</p></div>
+                <div><small>YOUR TASTE TEST / QLOO LIVE</small><h3>{result.rankedCandidateCount} submitted recommendations received a Qloo rank</h3><p>Qloo ranked the exact recommendation entities you submitted against the selected taste anchors and location: {result.location}.</p></div>
                 <span className="run-id">RUN {result.testId.slice(0, 8).toUpperCase()}</span>
               </div>
 
@@ -622,7 +622,7 @@ export default function HomePage() {
                 <div className="result-overview-content">
                   <small className="overline">THE RESULT AT A GLANCE</small>
                   <h4>{result.rankedCandidateCount === 0 ? "Not enough evidence to rank these recommendations." : result.candidates.every((candidate) => candidate.verdict === "PASS") ? "These recommendations align with the returned taste signal." : "Here’s how the recommendations stack up."}</h4>
-                  <p>{result.rankedCandidateCount} of {result.candidates.length} candidates received a rank from the {result.baselineResultCount}-entity Qloo baseline. Each verdict below follows the same documented rule.</p>
+                  <p>{result.rankedCandidateCount} of {result.candidates.length} recommendations received a position in Qloo’s candidate-filtered affinity results ({result.baselineResultCount} returned). Verdicts compare the submitted candidates Qloo returned; they are not probabilities of liking a place.</p>
                   <div className="summary-stats">
                     <div><strong>{verdictCount(result, "PASS")}</strong><span>Strong match</span></div>
                     <div><strong>{verdictCount(result, "REVIEW")}</strong><span>Take a closer look</span></div>
@@ -649,7 +649,7 @@ export default function HomePage() {
 
               <div className="leaderboard-header">
                 <div><span className="section-kicker">CANDIDATE LEADERBOARD</span><h3>Ranked against the real signal.</h3></div>
-                <p>Rank is Qloo’s returned position, not a made-up affinity score.</p>
+                <p>Rank compares your submitted candidates using Qloo’s returned affinity order—not a made-up score or a separate top-20 discovery list.</p>
               </div>
               <div className="leaderboard">
                 <div className="leaderboard-columns"><span>RECOMMENDATION</span><span>QLOO RANK</span><span>VERDICT</span></div>
@@ -670,8 +670,8 @@ export default function HomePage() {
               <p className="imagery-note">Editorial city photographs are visual context only; they are not presented as photos of the named businesses or attractions.</p>
 
               <details className="baseline-disclosure">
-                <summary><span><strong>Inspect the full Qloo evidence list</strong><small>Every entity returned for this run, in the order used by the verdict rule</small></span><b>{result.baseline.length} entities <span aria-hidden="true">＋</span></b></summary>
-                <p className="baseline-explainer">This is the actual ordered Qloo Insights baseline used to assign candidate ranks. Rank 1 is first in the returned affinity order. TasteProof does not invent a numeric affinity score.</p>
+                <summary><span><strong>Inspect Qloo’s broader discovery list</strong><small>Additional place recommendations returned for this taste context; shown as context, not used to rank submitted candidates</small></span><b>{result.baseline.length} entities <span aria-hidden="true">＋</span></b></summary>
+                <p className="baseline-explainer">This is a separate Qloo Insights discovery list for the same taste anchors and location. Submitted candidates are ranked through a second Insights request filtered to those exact candidate entity IDs, so a valid candidate does not need to appear in this discovery list to receive a rank. TasteProof does not invent a numeric affinity score.</p>
                 <div className="baseline-list">
                   <div className="baseline-row baseline-head"><span>RANK</span><span>QLOO ENTITY</span><span>ENTITY ID</span></div>
                   {result.baseline.map((entity) => <div className="baseline-row" key={entity.entityId}>

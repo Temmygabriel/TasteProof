@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { evaluateCandidates, verdictForRank } from "../src/lib/evaluate";
-import { chooseEntity, parseQlooEntities } from "../src/lib/qloo";
+import { chooseEntity, getCandidateRanking, parseQlooEntities } from "../src/lib/qloo";
 import { InputValidationError, parseTasteTestInput } from "../src/lib/validation";
 import { TestStateMachine } from "../src/lib/test-state";
 
@@ -89,6 +89,54 @@ describe("verdicts based on Qloo's broader affinity baseline", () => {
       { entityId: "another", name: "Place C", subtype: null, rank: 3 }
     ]);
     expect(result.rankedCandidateCount).toBe(1);
+  });
+});
+
+describe("candidate-specific Qloo affinity ranking", () => {
+  it("asks Insights to rank submitted entity IDs directly instead of intersecting a top-20 discovery list", async () => {
+    vi.stubEnv("QLOO_API_KEY", "unit-test-key");
+    vi.stubEnv("QLOO_BASE_URL", "https://hackathon.api.qloo.com");
+
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+      expect(init?.headers).toMatchObject({
+        accept: "application/json",
+        "X-Api-Key": "unit-test-key"
+      });
+      expect(url.searchParams.get("filter.type")).toBe("urn:entity:place");
+      expect(url.searchParams.get("signal.interests.entities")).toBe("anchor-artist,anchor-brand");
+      expect(url.searchParams.get("filter.location.query")).toBe("Houston, Texas");
+      expect(url.searchParams.get("filter.results.entities")).toBe("candidate-one,candidate-two,candidate-three");
+      expect(url.searchParams.get("sort_by")).toBe("affinity");
+      expect(url.searchParams.get("take")).toBe("3");
+
+      return new Response(JSON.stringify({
+        success: true,
+        results: { entities: [
+          { entity_id: "candidate-three", name: "Place Three", subtype: "urn:entity:place" },
+          { entity_id: "candidate-one", name: "Place One", subtype: "urn:entity:place" },
+          { entity_id: "candidate-two", name: "Place Two", subtype: "urn:entity:place" }
+        ] }
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const ranked = await getCandidateRanking(
+        ["anchor-artist", "anchor-brand"],
+        ["candidate-one", "candidate-two", "candidate-three"],
+        "Houston, Texas"
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(ranked.map((entity) => [entity.entityId, entity.rank])).toEqual([
+        ["candidate-three", 1],
+        ["candidate-one", 2],
+        ["candidate-two", 3]
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
   });
 });
 

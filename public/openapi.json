@@ -15,7 +15,7 @@
       "post": {
         "operationId": "evaluateRecommendationTasteFitAlias",
         "summary": "Evaluate recommendations against a supplied taste context",
-        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED. Users may pass the explicit Qloo entity IDs returned from /api/qloo/search when they need to disambiguate an anchor or candidate.",
+        "description": "Resolve taste anchors and submitted place candidates through Qloo. TasteProof asks Qloo Insights to rank the submitted candidate entity IDs directly using filter.results.entities, the supplied taste-anchor IDs and location. A separate top-20 discovery list is returned for context only; candidates do not need to appear in that separate list to be ranked. Candidates Qloo cannot resolve or return remain UNRESOLVED.",
         "requestBody": {
           "required": true,
           "content": {
@@ -117,7 +117,7 @@
         },
         "responses": {
           "200": {
-            "description": "Live Qloo result with resolved entities, relative ranks, verdicts and evidence."
+            "description": "Live Qloo result with resolved entities, candidate-specific relative ranks, verdicts, a separate discovery list and evidence."
           },
           "400": {
             "description": "Invalid input."
@@ -141,7 +141,7 @@
       "post": {
         "operationId": "evaluateRecommendationTasteFit",
         "summary": "Run TasteProof as an agent-callable evaluation tool",
-        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED. Users may pass the explicit Qloo entity IDs returned from /api/qloo/search when they need to disambiguate an anchor or candidate.",
+        "description": "Resolve taste anchors and submitted place candidates through Qloo. TasteProof asks Qloo Insights to rank the submitted candidate entity IDs directly using filter.results.entities, the supplied taste-anchor IDs and location. A separate top-20 discovery list is returned for context only; candidates do not need to appear in that separate list to be ranked. Candidates Qloo cannot resolve or return remain UNRESOLVED.",
         "requestBody": {
           "required": true,
           "content": {
@@ -243,7 +243,7 @@
         },
         "responses": {
           "200": {
-            "description": "Live Qloo result with resolved entities, relative ranks, verdicts and evidence."
+            "description": "Live Qloo result with resolved entities, candidate-specific relative ranks, verdicts, a separate discovery list and evidence."
           },
           "400": {
             "description": "Invalid input."
