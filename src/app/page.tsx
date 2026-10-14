@@ -4,7 +4,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { AnchorType, TasteTestRun, Verdict } from "../lib/types";
 import { compareAnchorChanges } from "../lib/anchor-change";
 
-type AnchorDraft = { name: string; type: AnchorType };
+type QlooEntityOption = { entityId: string; name: string; subtype: string | null };
+type AnchorDraft = { name: string; type: AnchorType; entityId?: string };
+type EntitySearchState = {
+  query: string;
+  type?: AnchorType;
+  loading: boolean;
+  matches: QlooEntityOption[];
+  error?: string;
+};
 
 const initialAnchors: AnchorDraft[] = [
   { name: "Tyler, the Creator", type: "artist" },
@@ -73,6 +81,11 @@ export default function HomePage() {
   const [task, setTask] = useState(initialTask);
   const [location, setLocation] = useState(initialLocation);
   const [candidates, setCandidates] = useState<string[]>(initialCandidates);
+  const [candidateEntityIds, setCandidateEntityIds] = useState<Array<string | null>>(
+    initialCandidates.map(() => null)
+  );
+  const [anchorSearch, setAnchorSearch] = useState<Record<number, EntitySearchState>>({});
+  const [candidateSearch, setCandidateSearch] = useState<Record<number, EntitySearchState>>({});
   const [result, setResult] = useState<TasteTestRun | null>(null);
   const [previousRun, setPreviousRun] = useState<TasteTestRun | null>(null);
   const [error, setError] = useState("");
@@ -93,35 +106,144 @@ export default function HomePage() {
     return () => { active = false; };
   }, []);
 
-  function setAnchor(index: number, key: keyof AnchorDraft, value: string) {
+  function clearAnchorSearch(index: number) {
+    setAnchorSearch((current) => {
+      const next = { ...current };
+      delete next[index];
+      return next;
+    });
+  }
+
+  function clearCandidateSearch(index: number) {
+    setCandidateSearch((current) => {
+      const next = { ...current };
+      delete next[index];
+      return next;
+    });
+  }
+
+  function setAnchor(index: number, key: "name" | "type", value: string) {
     setAnchors((current) => current.map((anchor, i) => {
       if (i !== index) return anchor;
+      // A typed name/category change invalidates any previously selected entity ID.
       return key === "type"
-        ? { ...anchor, type: value as AnchorType }
-        : { ...anchor, name: value };
+        ? { name: anchor.name, type: value as AnchorType }
+        : { name: value, type: anchor.type };
     }));
+    clearAnchorSearch(index);
+  }
+
+  async function requestEntityMatches(query: string, type: AnchorType): Promise<QlooEntityOption[]> {
+    const response = await fetch("/api/qloo/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ query, type })
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(typeof payload.error === "string" ? payload.error : "Qloo entity search failed.");
+    }
+    return Array.isArray(payload.entities) ? payload.entities as QlooEntityOption[] : [];
+  }
+
+  async function searchAnchor(index: number) {
+    const anchor = anchors[index];
+    const query = anchor?.name.trim();
+    if (!anchor || !query || busy) return;
+    setAnchorSearch((current) => ({
+      ...current,
+      [index]: { query, type: anchor.type, loading: true, matches: [] }
+    }));
+    try {
+      const matches = await requestEntityMatches(query, anchor.type);
+      setAnchorSearch((current) => ({
+        ...current,
+        [index]: { query, type: anchor.type, loading: false, matches }
+      }));
+    } catch (caught) {
+      setAnchorSearch((current) => ({
+        ...current,
+        [index]: {
+          query, type: anchor.type, loading: false, matches: [],
+          error: caught instanceof Error ? caught.message : "Qloo entity search failed."
+        }
+      }));
+    }
+  }
+
+  function selectAnchorMatch(index: number, match: QlooEntityOption) {
+    setAnchors((current) => current.map((anchor, i) => i === index
+      ? { name: match.name, type: anchor.type, entityId: match.entityId }
+      : anchor
+    ));
+    clearAnchorSearch(index);
+  }
+
+  async function searchCandidate(index: number) {
+    const query = candidates[index]?.trim();
+    if (!query || busy) return;
+    setCandidateSearch((current) => ({
+      ...current,
+      [index]: { query, loading: true, matches: [] }
+    }));
+    try {
+      const matches = await requestEntityMatches(query, "place");
+      setCandidateSearch((current) => ({
+        ...current,
+        [index]: { query, loading: false, matches }
+      }));
+    } catch (caught) {
+      setCandidateSearch((current) => ({
+        ...current,
+        [index]: {
+          query, loading: false, matches: [],
+          error: caught instanceof Error ? caught.message : "Qloo entity search failed."
+        }
+      }));
+    }
+  }
+
+  function setCandidateName(index: number, value: string) {
+    setCandidates((current) => current.map((item, i) => i === index ? value : item));
+    setCandidateEntityIds((current) => current.map((id, i) => i === index ? null : id));
+    clearCandidateSearch(index);
+  }
+
+  function selectCandidateMatch(index: number, match: QlooEntityOption) {
+    setCandidates((current) => current.map((name, i) => i === index ? match.name : name));
+    setCandidateEntityIds((current) => current.map((id, i) => i === index ? match.entityId : id));
+    clearCandidateSearch(index);
   }
 
   function addAnchor() {
     setAnchors((current) => current.length >= 5
       ? current
       : [...current, { name: "", type: "artist" }]);
+    setAnchorSearch({});
   }
 
   function removeAnchor(index: number) {
     setAnchors((current) => current.length <= 1
       ? current
       : current.filter((_, i) => i !== index));
+    setAnchorSearch({});
   }
 
   function addCandidate() {
     setCandidates((current) => current.length >= 10 ? current : [...current, ""]);
+    setCandidateEntityIds((current) => current.length >= 10 ? current : [...current, null]);
+    setCandidateSearch({});
   }
 
   function removeCandidate(index: number) {
     setCandidates((current) => current.length <= 1
       ? current
       : current.filter((_, i) => i !== index));
+    setCandidateEntityIds((current) => current.length <= 1
+      ? current
+      : current.filter((_, i) => i !== index));
+    setCandidateSearch({});
   }
 
   function restoreVerifiedExample() {
@@ -129,6 +251,9 @@ export default function HomePage() {
     setTask(initialTask);
     setLocation(initialLocation);
     setCandidates([...initialCandidates]);
+    setCandidateEntityIds(initialCandidates.map(() => null));
+    setAnchorSearch({});
+    setCandidateSearch({});
     setResult(null);
     setPreviousRun(null);
     setError("");
@@ -141,22 +266,70 @@ export default function HomePage() {
     setErrorState("");
     setBusy(true);
     try {
-      const submittedCandidates = candidates.map((candidate) => candidate.trim()).filter(Boolean);
+      const candidateRows = candidates.map((candidate, index) => ({
+        name: candidate.trim(),
+        entityId: candidateEntityIds[index] ?? null
+      })).filter((candidate) => candidate.name);
+      const submittedCandidates = candidateRows.map((candidate) => candidate.name);
       if (!submittedCandidates.length) {
         throw new Error("Add at least one recommendation from the AI agent before running the test.");
       }
+      const submittedAnchors = anchors.map((anchor) => ({
+        name: anchor.name.trim(),
+        type: anchor.type,
+        ...(anchor.entityId ? { entityId: anchor.entityId } : {})
+      }));
+      const candidateSelections = candidateRows
+        .filter((candidate): candidate is { name: string; entityId: string } => Boolean(candidate.entityId))
+        .map(({ name, entityId }) => ({ name, entityId }));
       const response = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ anchors, task, location, candidates: submittedCandidates })
+        body: JSON.stringify({
+          anchors: submittedAnchors,
+          task,
+          location,
+          candidates: submittedCandidates,
+          candidateSelections
+        })
       });
       const payload = await response.json();
       if (!response.ok) {
         setErrorState(typeof payload.state === "string" ? payload.state : "");
-        const missing = Array.isArray(payload.unresolvedAnchors)
-          ? " Unresolved by Qloo: " + payload.unresolvedAnchors.map((item: { name: string; type?: string }) =>
-              item.name + (item.type ? " (category: " + item.type.replaceAll("_", " ") + ")" : "")
-            ).join(", ") + ". Check that each category matches the kind of entity. If it still fails with the correct category, try a better-known or more specific name."
+        const unresolved = Array.isArray(payload.unresolvedAnchors) ? payload.unresolvedAnchors as Array<{
+          name: string; type?: AnchorType; matches?: QlooEntityOption[];
+        }> : [];
+        if (unresolved.length) {
+          const firstUnresolvedIndex = anchors.findIndex((anchor) =>
+            unresolved.some((item) => item.name.trim().toLocaleLowerCase() === anchor.name.trim().toLocaleLowerCase() && item.type === anchor.type)
+          );
+          setAnchorSearch((current) => {
+            const next = { ...current };
+            unresolved.forEach((item) => {
+              const index = anchors.findIndex((anchor) =>
+                anchor.name.trim().toLocaleLowerCase() === item.name.trim().toLocaleLowerCase() && anchor.type === item.type
+              );
+              if (index >= 0) {
+                next[index] = {
+                  query: anchors[index].name.trim(),
+                  type: anchors[index].type,
+                  loading: false,
+                  matches: Array.isArray(item.matches) ? item.matches : []
+                };
+              }
+            });
+            return next;
+          });
+          if (firstUnresolvedIndex >= 0) {
+            window.setTimeout(() => {
+              document.getElementById("anchor-row-" + firstUnresolvedIndex)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 60);
+          }
+        }
+        const missing = unresolved.length
+          ? " Could not uniquely resolve: " + unresolved.map((item) =>
+              item.name + (item.type ? " (" + item.type.replaceAll("_", " ") + ")" : "")
+            ).join(", ") + ". Choose the matching Qloo entity shown below an anchor. If no match is shown, change the category or use a more specific name."
           : "";
         throw new Error((payload.error || "The test could not be completed.") + missing);
       }
