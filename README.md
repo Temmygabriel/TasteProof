@@ -12,6 +12,8 @@ TasteProof is not a recommendation generator. It tests recommendations an agent 
 
 ![TasteProof Test Lab interface](public/tasteproof-preview.png)
 
+![TasteProof mobile interface](public/tasteproof-mobile-preview.png)
+
 The interface follows the **Test Lab** direction: warm paper, editorial typography, specimen labels, a central Taste Test Card, and inspectable result evidence.
 
 ## Product flow
