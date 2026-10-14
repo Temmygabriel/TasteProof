@@ -15,7 +15,7 @@
       "post": {
         "operationId": "evaluateRecommendationTasteFitAlias",
         "summary": "Evaluate recommendations against a supplied taste context",
-        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED.",
+        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED. Users may pass the explicit Qloo entity IDs returned from /api/qloo/search when they need to disambiguate an anchor or candidate.",
         "requestBody": {
           "required": true,
           "content": {
@@ -57,6 +57,12 @@
                             "podcast",
                             "videogame"
                           ]
+                        },
+                        "entityId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300,
+                          "description": "Optional Qloo entity ID selected from live search results. When provided, this exact entity is used instead of a name-only lookup."
                         }
                       }
                     }
@@ -80,6 +86,29 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
+                  },
+                  "candidateSelections": {
+                    "type": "array",
+                    "description": "Optional explicit Qloo place matches selected from POST /api/qloo/search. Each selection name must match a submitted candidate name.",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "entityId"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "entityId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -112,7 +141,7 @@
       "post": {
         "operationId": "evaluateRecommendationTasteFit",
         "summary": "Run TasteProof as an agent-callable evaluation tool",
-        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED.",
+        "description": "Resolve taste anchors and submitted candidates through Qloo. TasteProof requests a broader baseline of up to 20 places from Qloo Insights sorted by affinity and evaluates a candidate only if it appears in that provider result. Candidates outside the result window stay UNRESOLVED. Users may pass the explicit Qloo entity IDs returned from /api/qloo/search when they need to disambiguate an anchor or candidate.",
         "requestBody": {
           "required": true,
           "content": {
@@ -154,6 +183,12 @@
                             "podcast",
                             "videogame"
                           ]
+                        },
+                        "entityId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300,
+                          "description": "Optional Qloo entity ID selected from live search results. When provided, this exact entity is used instead of a name-only lookup."
                         }
                       }
                     }
@@ -177,6 +212,29 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
+                  },
+                  "candidateSelections": {
+                    "type": "array",
+                    "description": "Optional explicit Qloo place matches selected from POST /api/qloo/search. Each selection name must match a submitted candidate name.",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "entityId"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "entityId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -209,7 +267,7 @@
       "post": {
         "operationId": "resolveQlooEntities",
         "summary": "Resolve names into Qloo entities",
-        "description": "Search the Qloo entity catalogue. The API key remains server-side. Ambiguous user input must not be silently accepted.",
+        "description": "Search the Qloo entity catalogue by query and supported entity category. The UI lets the user select an exact returned entity to resolve ambiguous names. The API key remains server-side.",
         "requestBody": {
           "required": true,
           "content": {
