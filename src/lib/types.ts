@@ -62,7 +62,10 @@ export interface TasteTestRun {
   location: string;
   anchors: ResolvedAnchor[];
   candidates: CandidateResult[];
+  /** Number of submitted candidate entities Qloo returned in candidate-filtered Insights. */
+  candidateRankingResultCount: number;
   rankedCandidateCount: number;
+  /** Number of entities in the separate broad discovery list exposed as evidence. */
   baselineResultCount: number;
   evaluationRule: string;
   providerNote: string;
