@@ -117,7 +117,7 @@
         },
         "responses": {
           "200": {
-            "description": "Live Qloo result with resolved entities, candidate-specific relative ranks, verdicts, a separate discovery list and evidence."
+            "description": "Live Qloo result with candidate-specific relative ranks, a separate discovery list and evidence. candidateRankingResultCount is the number of submitted candidate entities returned by the candidate-filtered affinity request; baselineResultCount is the size of the separate discovery baseline."
           },
           "400": {
             "description": "Invalid input."
@@ -243,7 +243,7 @@
         },
         "responses": {
           "200": {
-            "description": "Live Qloo result with resolved entities, candidate-specific relative ranks, verdicts, a separate discovery list and evidence."
+            "description": "Live Qloo result with candidate-specific relative ranks, a separate discovery list and evidence. candidateRankingResultCount is the number of submitted candidate entities returned by the candidate-filtered affinity request; baselineResultCount is the size of the separate discovery baseline."
           },
           "400": {
             "description": "Invalid input."
