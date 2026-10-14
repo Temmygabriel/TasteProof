@@ -124,6 +124,17 @@ export default function HomePage() {
       : current.filter((_, i) => i !== index));
   }
 
+  function restoreVerifiedExample() {
+    setAnchors(initialAnchors.map((anchor) => ({ ...anchor })));
+    setTask(initialTask);
+    setLocation(initialLocation);
+    setCandidates([...initialCandidates]);
+    setResult(null);
+    setPreviousRun(null);
+    setError("");
+    setErrorState("");
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -143,7 +154,9 @@ export default function HomePage() {
       if (!response.ok) {
         setErrorState(typeof payload.state === "string" ? payload.state : "");
         const missing = Array.isArray(payload.unresolvedAnchors)
-          ? " Could not resolve: " + payload.unresolvedAnchors.map((item: { name: string }) => item.name).join(", ") + "."
+          ? " Unresolved by Qloo: " + payload.unresolvedAnchors.map((item: { name: string; type?: string }) =>
+              item.name + (item.type ? " (category: " + item.type.replaceAll("_", " ") + ")" : "")
+            ).join(", ") + ". Check that each category matches the kind of entity. If it still fails with the correct category, try a better-known or more specific name."
           : "";
         throw new Error((payload.error || "The test could not be completed.") + missing);
       }
@@ -273,7 +286,7 @@ export default function HomePage() {
             <form className="test-card" onSubmit={submit}>
               <div className="form-topline">
                 <div className="form-brand"><span className="mini-mark">✳</span><div><small>THE TASTE TEST CARD</small><strong>Set the context</strong></div></div>
-                <span className="example-badge">EXAMPLE INPUTS LOADED</span>
+                <button className="example-badge reset-example" type="button" onClick={restoreVerifiedExample}>Reset to working example ↺</button>
               </div>
 
               <section className="form-section">
