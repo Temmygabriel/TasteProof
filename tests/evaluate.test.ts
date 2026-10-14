@@ -122,6 +122,36 @@ describe("request validation", () => {
     expect(parseTasteTestInput(valid).candidates).toEqual(["Candidate A"]);
   });
 
+  it("accepts an explicit Qloo entity selection for an ambiguous anchor and candidate", () => {
+    const parsed = parseTasteTestInput({
+      ...valid,
+      anchors: [{ name: "Houston, Texas", type: "place", entityId: "urn:entity:place:houston" }],
+      candidateSelections: [{ name: "Candidate A", entityId: "urn:entity:place:candidate-a" }]
+    });
+    expect(parsed.anchors[0].entityId).toBe("urn:entity:place:houston");
+    expect(parsed.candidateSelections).toEqual([
+      { name: "Candidate A", entityId: "urn:entity:place:candidate-a" }
+    ]);
+  });
+
+  it("rejects a selected entity that is not one of the submitted candidate names", () => {
+    expect(() => parseTasteTestInput({
+      ...valid,
+      candidateSelections: [{ name: "Another Place", entityId: "urn:entity:place:other" }]
+    })).toThrow(/must correspond to a submitted candidate/);
+  });
+
+  it("rejects duplicate selected Qloo entity IDs across candidate rows", () => {
+    expect(() => parseTasteTestInput({
+      ...valid,
+      candidates: ["Candidate A", "Candidate B"],
+      candidateSelections: [
+        { name: "Candidate A", entityId: "urn:entity:place:shared" },
+        { name: "Candidate B", entityId: "urn:entity:place:shared" }
+      ]
+    })).toThrow(/cannot select the same Qloo entity/);
+  });
+
   it("allows blank UI rows but needs at least one candidate", () => {
     expect(parseTasteTestInput({ ...valid, candidates: ["Candidate A", "", "Candidate B"] }).candidates)
       .toEqual(["Candidate A", "Candidate B"]);
