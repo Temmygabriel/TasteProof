@@ -19,6 +19,23 @@ try {
   await assert(healthResponse.ok() && health.qlooKeyConfigured === true,
     "The running production server does not report the Qloo key as configured.");
 
+  // Test the exact narrow desktop/tablet range where users reported clipped selectors.
+  await page.setViewportSize({ width: 936, height: 900 });
+  await page.waitForTimeout(200);
+  const compactDesktopWidth = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth
+  }));
+  await assert(compactDesktopWidth.document <= compactDesktopWidth.viewport + 1,
+    "Compact desktop layout overflows horizontally: document width " + compactDesktopWidth.document +
+    "px exceeds viewport " + compactDesktopWidth.viewport + "px.");
+  const compactDesktopSelectBounds = await page.locator(".anchor-row select").first().evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: window.innerWidth };
+  });
+  await assert(compactDesktopSelectBounds.right <= compactDesktopSelectBounds.viewport + 1,
+    "A taste-anchor category selector is clipped at 936px: " + JSON.stringify(compactDesktopSelectBounds));
+
   // Narrow-tablet / browser-zoom layouts are important: category selectors
   // must not be pushed outside the visible card when the layout collapses.
   await page.setViewportSize({ width: 749, height: 900 });
@@ -85,6 +102,22 @@ try {
   await assert(await page.locator(".comparison-row").count() === 3,
     "The Anchor Swap comparison did not include all submitted candidates.");
 
+  // Recheck the compact desktop layout with the live receipt and comparison visible.
+  await page.setViewportSize({ width: 936, height: 900 });
+  const compactDesktopResultsWidth = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth
+  }));
+  await assert(compactDesktopResultsWidth.document <= compactDesktopResultsWidth.viewport + 1,
+    "Compact desktop results overflow horizontally: document width " + compactDesktopResultsWidth.document +
+    "px exceeds viewport " + compactDesktopResultsWidth.viewport + "px.");
+  const compactDesktopResultsSelectBounds = await page.locator(".anchor-row select").first().evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: window.innerWidth };
+  });
+  await assert(compactDesktopResultsSelectBounds.right <= compactDesktopResultsSelectBounds.viewport + 1,
+    "A taste-anchor category selector is clipped at 936px with results visible: " + JSON.stringify(compactDesktopResultsSelectBounds));
+
   // Recheck a narrow tablet/browser-zoom layout with the real results and
   // controlled comparison present, including anchor category selector bounds.
   await page.setViewportSize({ width: 749, height: 900 });
@@ -125,6 +158,10 @@ try {
     candidateRows: firstRows,
     anchorSwapControlled: true,
     comparisonRows: await page.locator(".comparison-row").count(),
+    compactDesktopViewport: compactDesktopWidth,
+    compactDesktopSelectBounds,
+    compactDesktopResultsViewport: compactDesktopResultsWidth,
+    compactDesktopResultsSelectBounds,
     tabletViewport: tabletWidth,
     tabletSelectBounds,
     tabletResultsViewport: tabletResultsWidth,
