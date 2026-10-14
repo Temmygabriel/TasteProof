@@ -19,6 +19,24 @@ try {
   await assert(healthResponse.ok() && health.qlooKeyConfigured === true,
     "The running production server does not report the Qloo key as configured.");
 
+  // Narrow-tablet / browser-zoom layouts are important: category selectors
+  // must not be pushed outside the visible card when the layout collapses.
+  await page.setViewportSize({ width: 749, height: 900 });
+  await page.waitForTimeout(250);
+  const tabletWidth = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth
+  }));
+  await assert(tabletWidth.document <= tabletWidth.viewport + 1,
+    "Narrow tablet layout overflows horizontally: document width " + tabletWidth.document +
+    "px exceeds viewport " + tabletWidth.viewport + "px.");
+  const tabletSelectBounds = await page.locator(".anchor-row select").first().evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: window.innerWidth };
+  });
+  await assert(tabletSelectBounds.right <= tabletSelectBounds.viewport + 1,
+    "A taste-anchor category selector is clipped at a narrow tablet width: " + JSON.stringify(tabletSelectBounds));
+
   // Capture a real mobile render before entering test data, and fail on
   // horizontal overflow that would make the product awkward on phones.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -67,6 +85,23 @@ try {
   await assert(await page.locator(".comparison-row").count() === 3,
     "The Anchor Swap comparison did not include all submitted candidates.");
 
+  // Recheck a narrow tablet/browser-zoom layout with the real results and
+  // controlled comparison present, including anchor category selector bounds.
+  await page.setViewportSize({ width: 749, height: 900 });
+  const tabletResultsWidth = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth
+  }));
+  await assert(tabletResultsWidth.document <= tabletResultsWidth.viewport + 1,
+    "Narrow tablet results view overflows horizontally: document width " + tabletResultsWidth.document +
+    "px exceeds viewport " + tabletResultsWidth.viewport + "px.");
+  const tabletResultsSelectBounds = await page.locator(".anchor-row select").first().evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewport: window.innerWidth };
+  });
+  await assert(tabletResultsSelectBounds.right <= tabletResultsSelectBounds.viewport + 1,
+    "A taste-anchor category selector is clipped in the populated narrow tablet view: " + JSON.stringify(tabletResultsSelectBounds));
+
   // Recheck responsive layout with the evidence receipt and comparison present.
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileResultsWidth = await page.evaluate(() => ({
@@ -90,6 +125,10 @@ try {
     candidateRows: firstRows,
     anchorSwapControlled: true,
     comparisonRows: await page.locator(".comparison-row").count(),
+    tabletViewport: tabletWidth,
+    tabletSelectBounds,
+    tabletResultsViewport: tabletResultsWidth,
+    tabletResultsSelectBounds,
     mobileViewport: mobileWidth,
     mobileResultsViewport: mobileResultsWidth,
     pageErrors: pageErrors.length
