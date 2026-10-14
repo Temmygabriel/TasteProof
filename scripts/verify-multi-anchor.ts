@@ -11,8 +11,9 @@ interface CanonicalFixture {
 
 function report(run: TasteTestRun, label: string) {
   const unresolved = run.candidates.filter((candidate) => candidate.verdict === "UNRESOLVED").length;
-  console.log(label + ": anchors=" + run.anchors.length + ", baseline=" + run.baselineResultCount +
-    ", ranked=" + run.rankedCandidateCount + "/" + run.candidates.length + ", unresolved=" + unresolved + ".");
+  console.log(label + ": anchors=" + run.anchors.length + ", candidate ranking results=" + run.candidateRankingResultCount +
+    ", discovery baseline=" + run.baselineResultCount + ", ranked=" + run.rankedCandidateCount +
+    "/" + run.candidates.length + ", unresolved=" + unresolved + ".");
   console.log(label + " anchors: " + run.anchors.map((anchor) => anchor.resolvedName + " (" + anchor.type + ")").join(" | "));
   console.log(label + " top baseline: " + run.baseline.slice(0, 5).map((entity) => entity.name + " #" + entity.rank).join(" | "));
 }
@@ -35,16 +36,17 @@ async function main() {
   };
   const seedRun = await runTasteTest(seed);
   report(seedRun, "Mixed-anchor seed");
-  if (seedRun.baselineResultCount < 3) {
+  if (seedRun.candidateRankingResultCount < 3 || seedRun.baselineResultCount < 3) {
     throw new Error("The three-anchor live baseline returned fewer than three places; the default multi-anchor experience needs investigation.");
   }
 
   const candidates = seedRun.baseline.slice(0, 10).map((entity) => entity.name);
   const first = await runTasteTest({ ...seed, candidates });
   report(first, "Mixed-anchor evaluation");
-  if (first.baselineResultCount < 3 || first.rankedCandidateCount < 3) {
-    throw new Error("Mixed-anchor evaluation needs at least three baseline places and three ranked candidates; got baseline=" +
-      first.baselineResultCount + ", ranked=" + first.rankedCandidateCount + ".");
+  if (first.candidateRankingResultCount < 3 || first.baselineResultCount < 3 || first.rankedCandidateCount < 3) {
+    throw new Error("Mixed-anchor evaluation needs at least three candidate-ranking results and three ranked candidates; got candidate results=" +
+      first.candidateRankingResultCount + ", discovery baseline=" + first.baselineResultCount +
+      ", ranked=" + first.rankedCandidateCount + ".");
   }
 
   const swappedAnchors = fixture.anchors.map((anchor, index) =>
@@ -52,7 +54,8 @@ async function main() {
   );
   const second = await runTasteTest({ ...seed, anchors: swappedAnchors, candidates });
   report(second, "Mixed-anchor Anchor Swap");
-  if (second.testId === first.testId || second.baselineResultCount < 3 || second.rankedCandidateCount < 3) {
+  if (second.testId === first.testId || second.candidateRankingResultCount < 3 ||
+      second.baselineResultCount < 3 || second.rankedCandidateCount < 3) {
     throw new Error("Mixed-anchor Anchor Swap needs a distinct live run, at least three baseline places, and at least three ranked candidates.");
   }
 
@@ -69,7 +72,8 @@ async function main() {
     mode: "qloo-live-mixed-anchors",
     anchorsBefore: first.anchors.length,
     anchorsAfter: second.anchors.length,
-    baselineResultCounts: [first.baselineResultCount, second.baselineResultCount],
+    candidateRankingResultCounts: [first.candidateRankingResultCount, second.candidateRankingResultCount],
+    discoveryBaselineCounts: [first.baselineResultCount, second.baselineResultCount],
     rankedCandidates: [first.rankedCandidateCount, second.rankedCandidateCount],
     anchorSwapped: true,
     observedRankChanges: rankChanges,

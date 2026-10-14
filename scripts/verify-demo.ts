@@ -24,7 +24,7 @@ function reportRun(run: TasteTestRun, label: string) {
   const unresolved = run.candidates.filter((candidate) => candidate.verdict === "UNRESOLVED").length;
   console.log(label + ": " + run.rankedCandidateCount + "/" + run.candidates.length +
     " submitted candidates ranked by Qloo; " + unresolved + " unresolved; candidate ranking results=" +
-    run.baselineResultCount + "; discovery baseline=" + run.baseline.length + ".");
+    run.candidateRankingResultCount + "; discovery baseline=" + run.baselineResultCount + ".");
   console.log(label + " baseline sample: " +
     run.baseline.slice(0, 10).map((entity) => entity.name + " [rank " + entity.rank + "]").join(" | "));
   for (const candidate of run.candidates) {
@@ -87,10 +87,11 @@ async function main() {
     reportRun(first, "Baseline-derived live test");
   }
   const minimumRankedCandidates = baselineSmoke ? 3 : 1;
-  if (first.rankedCandidateCount < minimumRankedCandidates || first.baselineResultCount < 3) {
+  if (first.rankedCandidateCount < minimumRankedCandidates || first.candidateRankingResultCount < 3 || first.baselineResultCount < 3) {
     throw new Error("Initial run needs at least " + minimumRankedCandidates +
       " ranked candidate(s) and a baseline of three or more Qloo results; got " +
-      first.rankedCandidateCount + " ranked candidate(s), " + first.baselineResultCount + " baseline result(s).");
+      first.rankedCandidateCount + " ranked candidate(s), " + first.candidateRankingResultCount +
+      " candidate-ranking result(s), " + first.baselineResultCount + " discovery-baseline result(s).");
   }
 
   const swappedAnchors = firstInput.anchors.map((anchor, index) =>
@@ -100,7 +101,7 @@ async function main() {
   );
   const second = await runTasteTest({ ...firstInput, anchors: swappedAnchors });
   reportRun(second, "Anchor Swap live test");
-  if (first.testId === second.testId || second.baselineResultCount < 3) {
+  if (first.testId === second.testId || second.candidateRankingResultCount < 3 || second.baselineResultCount < 3) {
     throw new Error("The second live Anchor Swap run is incomplete.");
   }
   if (second.rankedCandidateCount < minimumRankedCandidates) {
@@ -127,7 +128,8 @@ async function main() {
     verified: true,
     mode: "qloo-live",
     runs: 2,
-    baselineResultCounts: [first.baselineResultCount, second.baselineResultCount],
+    candidateRankingResultCounts: [first.candidateRankingResultCount, second.candidateRankingResultCount],
+    discoveryBaselineCounts: [first.baselineResultCount, second.baselineResultCount],
     candidateCount: first.candidates.length,
     rankedCandidates: [first.rankedCandidateCount, second.rankedCandidateCount],
     unresolvedCandidates: [
