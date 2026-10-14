@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { evaluateCandidates } from "./evaluate";
-import { chooseEntity, searchEntities, getAffinityBaseline, type QlooEntity } from "./qloo";
+import { chooseEntity, searchEntities, getAffinityBaseline, getCandidateRanking, type QlooEntity } from "./qloo";
 import type { TasteTestInput, TasteTestRun, AnchorType } from "./types";
 import { TestStateMachine, type StateSnapshot } from "./test-state";
 
@@ -132,8 +132,32 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
   });
 
   machine.transition("EVALUATING");
-  const baseline = await getAffinityBaseline(anchors.map((anchor) => anchor.entityId), input.location, 20);
-  const evaluation = evaluateCandidates(candidateMatches, baseline);
+  const anchorEntityIds = anchors.map((anchor) => anchor.entityId);
+
+  // Keep a separate discovery baseline for the evidence drawer, but score the
+  // user's submitted place entities directly. Candidate recommendations should
+  // not have to appear in an unrelated top-20 recommendation list to be ranked.
+  const baseline = await getAffinityBaseline(anchorEntityIds, input.location, 20);
+
+  // Preserve safe contextual disambiguation: if search gave multiple exact
+  // candidates, a single exact-name place in the location-scoped discovery
+  // baseline can identify it without guessing between duplicate entities.
+  const normalizeName = (value: string) =>
+    value.normalize("NFKC").trim().toLocaleLowerCase().replace(/\s+/g, " ");
+  const candidatesForRanking = candidateMatches.map((match) => {
+    if (match.entity || match.resolution !== "ambiguous") return match;
+    const exact = baseline.filter((entity) => normalizeName(entity.name) === normalizeName(match.inputName));
+    const unique = Array.from(new Map(exact.map((entity) => [entity.entityId.toUpperCase(), entity])).values());
+    return unique.length === 1
+      ? { ...match, entity: unique[0], resolution: "resolved" as const }
+      : match;
+  });
+
+  const submittedEntityIds = candidatesForRanking.flatMap((candidate) =>
+    candidate.entity ? [candidate.entity.entityId] : []
+  );
+  const candidateRanking = await getCandidateRanking(anchorEntityIds, submittedEntityIds, input.location);
+  const evaluation = evaluateCandidates(candidatesForRanking, candidateRanking);
   const hasRankedCandidate = evaluation.candidates.some((candidate) =>
     candidate.verdict === "PASS" || candidate.verdict === "REVIEW" || candidate.verdict === "FAIL"
   );
@@ -158,8 +182,8 @@ export async function runTasteTest(input: TasteTestInput): Promise<TasteTestRun>
     rankedCandidateCount: evaluation.rankedCandidateCount,
     baselineResultCount: evaluation.baselineResultCount,
     evaluationRule:
-      "Evaluate each submitted candidate against Qloo's actual Insights baseline of up to 20 places sorted by affinity. Top third = PASS, middle third = REVIEW, bottom third = FAIL. Candidates absent from the returned baseline, or a baseline with fewer than three entities, remain UNRESOLVED. Rank is ordinal, not a numeric affinity score.",
+      "Ask Qloo Insights to rank the submitted, resolved candidate place entities directly using filter.results.entities, the provided taste-anchor entity IDs, and the chosen location, sorted by affinity. Among candidate entities Qloo returns: top third = PASS, middle third = REVIEW, bottom third = FAIL. Candidates Qloo cannot resolve or return remain UNRESOLVED; if fewer than three candidates are returned, no relative verdict is assigned. Rank is ordinal, not a numeric affinity score. The separate 20-place discovery list is context only and is not used to decide whether a submitted candidate gets ranked.",
     providerNote:
-      "Live Qloo entity search plus Qloo Insights response order sorted by affinity. No numeric affinity score is fabricated."
+      "Live Qloo entity search plus a candidate-filtered Qloo Insights response sorted by affinity. The separate discovery baseline is shown for context. No numeric affinity score is fabricated."
   };
 }
