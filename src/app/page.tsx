@@ -463,7 +463,7 @@ export default function HomePage() {
             <div><span className="section-kicker">THE SIGNATURE MOVE / 03</span><h2>One small change. A new test.</h2><p>Change one taste anchor in the test card above and run it again. This compares the two actual responses.</p></div>
             <span className={"swap-status " + (controlledSwap ? "controlled" : "")}>{controlledSwap ? "CONTROLLED SWAP" : anchorChanges.length === 0 ? "SAME CONTEXT" : "CONTEXT CHANGED"}</span>
           </div>
-          <div className="swap-showcase">
+          <div className={"swap-showcase anchor-change-report" + (controlledSwap ? " controlled" : "")}>
             <div className="swap-run-card">
               <div className="swap-card-top"><small>BEFORE / RUN {previousRun.testId.slice(0, 6).toUpperCase()}</small><span>01</span></div>
               <h3>Original taste</h3>
@@ -480,7 +480,7 @@ export default function HomePage() {
               })}</div>
               <div className="swap-card-foot"><span>{result.rankedCandidateCount} candidates ranked</span><span>{result.location}</span></div>
             </div>
-            <aside className="swap-observation"><span className="note-flower">✳</span><small>WHAT CHANGED?</small><h3>{controlledSwap ? "One variable changed." : anchorChanges.length === 0 ? "No resolved anchor changed." : anchorChanges.length + " anchor changes detected."}</h3>
+            <aside className="swap-observation"><span className="note-flower">✳</span><small>WHAT CHANGED?</small><h3>{controlledSwap ? "One taste variable changed." : anchorChanges.length === 0 ? "No resolved anchor changed." : anchorChanges.length + " anchor changes detected."}</h3>
               {anchorChanges.length ? anchorChanges.map((change) => <p key={change.index}><strong>{change.previous?.resolvedName || "Anchor removed"}</strong><span>→</span><strong>{change.current?.resolvedName || "Anchor removed"}</strong></p>) : <p>The resolved taste-anchor set is the same in both runs.</p>}
               <div className="swap-observation-rule">{changed ? "The candidate comparison below highlights observed changes only." : "No observed change in this run. TasteProof never forces a dramatic result."}</div>
             </aside>
